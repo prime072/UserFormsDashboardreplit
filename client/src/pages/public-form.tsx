@@ -170,6 +170,23 @@ export default function PublicForm() {
                     <Label htmlFor={field.id} className="cursor-pointer">{field.label}</Label>
                   </div>
                 )}
+                {field.type === 'file' && (
+                  <div className="space-y-2">
+                    <Input 
+                      type="file" 
+                      required={field.required}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // In a real app, we'd upload to S3/Cloudinary
+                          // For this prototype, we'll store the filename or base64
+                          setData({...formData, [field.label]: file.name});
+                        }
+                      }} 
+                    />
+                    <p className="text-xs text-slate-500">Max file size: 5MB</p>
+                  </div>
+                )}
               </div>
             ))}
             <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />} Submit Response</Button>

@@ -222,10 +222,21 @@ export default function FormBuilder() {
                           <SelectItem value="select">Dropdown</SelectItem>
                           <SelectItem value="radio">Radio</SelectItem>
                           <SelectItem value="checkbox">Checkbox</SelectItem>
+                          <SelectItem value="file">File Upload</SelectItem>
                           <SelectItem value="date">Date</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    {field.type !== 'checkbox' && field.type !== 'date' && field.type !== 'file' && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Placeholder</Label>
+                        <Input 
+                          value={field.placeholder || ''} 
+                          onChange={(e) => updateField(field.id, { placeholder: e.target.value })} 
+                          placeholder="Enter placeholder text..."
+                        />
+                      </div>
+                    )}
                     {(field.type === 'select' || field.type === 'radio') && (
                       <div className="space-y-3 bg-slate-50 p-4 rounded-md">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Options</Label>
