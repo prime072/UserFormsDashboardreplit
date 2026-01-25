@@ -226,6 +226,53 @@ export default function FormBuilder() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {(field.type === 'select' || field.type === 'radio') && (
+                      <div className="space-y-3 bg-slate-50 p-4 rounded-md">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Options</Label>
+                        <div className="space-y-2">
+                          {(field.options || []).map((option, index) => (
+                            <div key={index} className="flex gap-2">
+                              <Input 
+                                value={option} 
+                                onChange={(e) => {
+                                  const newOptions = [...(field.options || [])];
+                                  newOptions[index] = e.target.value;
+                                  updateField(field.id, { options: newOptions });
+                                }}
+                                className="bg-white"
+                              />
+                              <Button variant="ghost" size="icon" onClick={() => removeOption(field.id, index)} className="text-red-500">
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <div className="flex gap-2">
+                            <Input 
+                              placeholder="Add option..." 
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  addOption(field.id, (e.target as HTMLInputElement).value);
+                                  (e.target as HTMLInputElement).value = '';
+                                }
+                              }}
+                              className="bg-white"
+                            />
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={(e) => {
+                                const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                                addOption(field.id, input.value);
+                                input.value = '';
+                              }}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Switch checked={field.required} onCheckedChange={(v) => updateField(field.id, { required: v })} />

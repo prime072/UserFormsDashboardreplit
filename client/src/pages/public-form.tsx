@@ -161,9 +161,13 @@ export default function PublicForm() {
                   </RadioGroup>
                 )}
                 {field.type === 'checkbox' && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox id={field.id} onCheckedChange={v => setData({...formData, [field.label]: !!v})} />
-                    <Label htmlFor={field.id}>{field.label}</Label>
+                  <div className="flex items-center gap-2 py-2">
+                    <Checkbox 
+                      id={field.id} 
+                      checked={!!formData[field.label]}
+                      onCheckedChange={v => setData({...formData, [field.label]: !!v})} 
+                    />
+                    <Label htmlFor={field.id} className="cursor-pointer">{field.label}</Label>
                   </div>
                 )}
               </div>
