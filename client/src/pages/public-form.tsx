@@ -14,9 +14,12 @@ import { Loader2, Send, Lock } from "lucide-react";
 
 export default function PublicForm() {
   const [match, params] = useRoute("/s/:id");
-  const [, setLocation] = useLocation();
-  const { submitResponse, responses } = useForms();
+  const [location, setLocation] = useLocation();
+  const { submitResponse, responses, updateResponse } = useForms();
   const { toast } = useToast();
+  
+  const queryParams = new URLSearchParams(window.location.search);
+  const editId = queryParams.get("edit");
   
   const formId = params?.id;
   const [form, setForm] = useState<any>(null);
@@ -28,12 +31,20 @@ export default function PublicForm() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   useEffect(() => {
-    const fetchForm = async () => {
+    const fetchFormAndResponse = async () => {
       try {
         const response = await fetch(`/api/forms/${formId}`);
         if (response.ok) {
           const data = await response.json();
           setForm(data);
+
+          if (editId) {
+            const respRes = await fetch(`/api/responses/${editId}`);
+            if (respRes.ok) {
+              const respData = await respRes.json();
+              setData(respData.data);
+            }
+          }
         }
       } catch (error) {
         console.error("Error fetching form:", error);
@@ -41,11 +52,11 @@ export default function PublicForm() {
         setLoading(false);
       }
     };
-    if (formId) fetchForm();
-  }, [formId]);
+    if (formId) fetchFormAndResponse();
+  }, [formId, editId]);
 
   useEffect(() => {
-    if (form && form.allowEditing === false) {
+    if (form && form.allowEditing === false && !editId) {
       const alreadySubmitted = responses.some(r => r.formId === formId);
       if (alreadySubmitted) {
         toast({ title: "Submission Restricted", description: "This form only allows one submission." });
@@ -95,9 +106,20 @@ export default function PublicForm() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const { submissionId } = await submitResponse(form.id, formData);
-      toast({ title: "Submitted", description: "Your response has been recorded." });
-      setLocation(`/s/${form.id}/confirmation/${submissionId}`);
+      if (editId) {
+        await fetch(`/api/responses/${editId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: formData }),
+        });
+        updateResponse(editId, formData);
+        toast({ title: "Updated", description: "Your response has been updated." });
+        setLocation(`/s/${form.id}/confirmation/${editId}`);
+      } else {
+        const { submissionId } = await submitResponse(form.id, formData);
+        toast({ title: "Submitted", description: "Your response has been recorded." });
+        setLocation(`/s/${form.id}/confirmation/${submissionId}`);
+      }
     } catch (error) {
       toast({ title: "Error", description: "Failed to submit response.", variant: "destructive" });
     } finally {
@@ -165,7 +187,10 @@ export default function PublicForm() {
                     <Checkbox 
                       id={field.id} 
                       checked={!!formData[field.label]}
-                      onCheckedChange={v => setData({...formData, [field.label]: !!v})} 
+                      onCheckedChange={v => {
+                        const newData = {...formData, [field.label]: !!v};
+                        setData(newData);
+                      }} 
                     />
                     <Label htmlFor={field.id} className="cursor-pointer">{field.label}</Label>
                   </div>

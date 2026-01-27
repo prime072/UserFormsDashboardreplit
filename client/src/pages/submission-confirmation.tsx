@@ -330,9 +330,23 @@ function SubmissionConfirmationContent({ form, response, resolveLookup }: { form
               </Button>
             )}
           </div>
-          <Button className="w-full" onClick={() => setLocation("/")}>
-            Back to Dashboard
-          </Button>
+          <div className="flex flex-col gap-3">
+            {form.allowEditing !== false && (
+              <Button 
+                variant="outline" 
+                className="w-full border-primary text-primary hover:bg-primary/5"
+                onClick={() => setLocation(`/s/${form.id}?edit=${submissionId}`)}
+              >
+                Edit Your Response
+              </Button>
+            )}
+            <Button 
+              className="w-full" 
+              onClick={() => setLocation(`/s/${form.id}`)}
+            >
+              Submit Another Response
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
