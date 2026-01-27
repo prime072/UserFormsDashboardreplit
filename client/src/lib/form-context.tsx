@@ -30,7 +30,8 @@ export type FieldType =
   | "checkbox"
   | "select"
   | "radio"
-  | "date";
+  | "date"
+  | "file";
 export type OutputFormat = "thank_you" | "whatsapp" | "excel" | "docx" | "pdf";
 
 export interface FormField {

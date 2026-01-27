@@ -237,7 +237,7 @@ export default function FormBuilder() {
                         />
                       </div>
                     )}
-                    {(field.type === 'select' || field.type === 'radio') && (
+                    {(field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') && (
                       <div className="space-y-3 bg-slate-50 p-4 rounded-md">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Options</Label>
                         <div className="space-y-2">

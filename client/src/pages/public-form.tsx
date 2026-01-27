@@ -183,16 +183,42 @@ export default function PublicForm() {
                   </RadioGroup>
                 )}
                 {field.type === 'checkbox' && (
-                  <div className="flex items-center gap-2 py-2">
-                    <Checkbox 
-                      id={field.id} 
-                      checked={!!formData[field.label]}
-                      onCheckedChange={v => {
-                        const newData = {...formData, [field.label]: !!v};
-                        setData(newData);
-                      }} 
-                    />
-                    <Label htmlFor={field.id} className="cursor-pointer">{field.label}</Label>
+                  <div className="space-y-2 py-2">
+                    {field.options && field.options.length > 0 ? (
+                      <div className="space-y-2">
+                        {field.options.map((option: string) => (
+                          <div key={option} className="flex items-center gap-2">
+                            <Checkbox 
+                              id={`${field.id}-${option}`} 
+                              checked={Array.isArray(formData[field.label]) ? formData[field.label].includes(option) : false}
+                              onCheckedChange={v => {
+                                const currentValues = Array.isArray(formData[field.label]) ? [...formData[field.label]] : [];
+                                if (v) {
+                                  if (!currentValues.includes(option)) currentValues.push(option);
+                                } else {
+                                  const index = currentValues.indexOf(option);
+                                  if (index > -1) currentValues.splice(index, 1);
+                                }
+                                setData({...formData, [field.label]: currentValues});
+                              }} 
+                            />
+                            <Label htmlFor={`${field.id}-${option}`} className="cursor-pointer">{option}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Checkbox 
+                          id={field.id} 
+                          checked={!!formData[field.label]}
+                          onCheckedChange={v => {
+                            const newData = {...formData, [field.label]: !!v};
+                            setData(newData);
+                          }} 
+                        />
+                        <Label htmlFor={field.id} className="cursor-pointer">{field.label}</Label>
+                      </div>
+                    )}
                   </div>
                 )}
                 {field.type === 'file' && (
