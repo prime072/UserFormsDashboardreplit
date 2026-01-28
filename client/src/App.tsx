@@ -21,6 +21,7 @@ import PrivateUserDashboard from "@/pages/private-user-dashboard";
 import PrivateUserLogin from "@/pages/private-user-login";
 import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
+import ProjectUsers from "@/pages/project-users";
 import { ReactNode } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -95,6 +96,9 @@ function Router() {
       <Route path="/private-login" component={PrivateUserLogin} />
       <Route path="/private-users">
         <ProtectedRoute component={PrivateUserDashboard} />
+      </Route>
+      <Route path="/project/:id/users">
+        <ProtectedRoute component={ProjectUsers} />
       </Route>
       
       {/* Public Route - No Protection needed */}

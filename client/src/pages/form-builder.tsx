@@ -37,6 +37,14 @@ export default function FormBuilder() {
   const [gridConfig, setGridConfig] = useState<GridConfig>({ headers: [], rows: [] });
   const [allowEditing, setAllowEditing] = useState(true);
 
+  const [projectId, setProjectId] = useState<string | undefined>();
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pId = urlParams.get('projectId');
+    if (pId) setProjectId(pId);
+  }, []);
+
   useEffect(() => {
     if (isEditing && formId) {
       const existingForm = getForm(formId);
@@ -50,6 +58,7 @@ export default function FormBuilder() {
         setWhatsappFormat(existingForm.whatsappFormat || "");
         setGridConfig(existingForm.gridConfig || { headers: [], rows: [] });
         setAllowEditing(existingForm.allowEditing ?? true);
+        setProjectId(existingForm.projectId);
       }
     }
   }, [isEditing, formId, getForm]);
@@ -94,10 +103,10 @@ export default function FormBuilder() {
   const handleSave = async () => {
     try {
       if (isEditing && formId) {
-        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing);
+        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, projectId);
         toast({ title: "Form Updated", description: "Your changes have been saved." });
       } else {
-        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing);
+        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, projectId);
         toast({ title: "Form Created", description: "Your form has been created successfully." });
       }
       setTimeout(() => setLocation("/forms"), 1000);
