@@ -9,6 +9,34 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
 });
 
+export const projects = pgTable("projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const projectUsers = pgTable("project_users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull(),
+  userId: text("user_id").notNull(),
+  password: text("password").notNull(),
+  role: text("role").notNull().default("viewer"),
+});
+
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProjectUserSchema = createInsertSchema(projectUsers).omit({
+  id: true,
+});
+
+export type Project = typeof projects.$inferSelect;
+export type ProjectUser = typeof projectUsers.$inferSelect;
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -20,6 +48,7 @@ export type User = typeof users.$inferSelect;
 export const forms = pgTable("forms", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
+  projectId: varchar("project_id"),
   title: text("title").notNull(),
   status: text("status").notNull().default("Active"),
   visibility: text("visibility").notNull().default("public"),

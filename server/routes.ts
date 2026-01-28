@@ -26,6 +26,54 @@ export async function registerRoutes(
   // Register authentication routes
   registerAuthRoutes(app);
   
+  // Project routes
+  app.get("/api/projects", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const projects = await storage.getProjectsByUserId(userId);
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch projects" });
+    }
+  });
+
+  app.post("/api/projects", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const project = await storage.createProject({ ...req.body, userId });
+      res.status(201).json(project);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create project" });
+    }
+  });
+
+  app.get("/api/projects/:id/forms", isAuthenticated, async (req, res) => {
+    try {
+      const forms = await storage.getFormsByProjectId(req.params.id);
+      res.json(forms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch project forms" });
+    }
+  });
+
+  app.post("/api/projects/:id/users", isAuthenticated, async (req, res) => {
+    try {
+      const projectUser = await storage.createProjectUser({ ...req.body, projectId: req.params.id });
+      res.status(201).json(projectUser);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create project user" });
+    }
+  });
+
+  app.get("/api/projects/:id/users", isAuthenticated, async (req, res) => {
+    try {
+      const users = await storage.getProjectUsers(req.params.id);
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch project users" });
+    }
+  });
+
   // Form routes
   // Get live total responses from MongoDB
   app.get("/api/user/total-responses", isAuthenticated, async (req, res) => {
