@@ -223,11 +223,34 @@ export default function FormBuilder() {
                           <SelectItem value="radio">Radio</SelectItem>
                           <SelectItem value="checkbox">Checkbox</SelectItem>
                           <SelectItem value="file">File Upload</SelectItem>
+                          <SelectItem value="link_button">Link Button</SelectItem>
                           <SelectItem value="date">Date</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    {field.type !== 'checkbox' && field.type !== 'date' && field.type !== 'file' && (
+                    {field.type === 'link_button' && (
+                      <div className="space-y-3 bg-slate-50 p-4 rounded-md">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Button Configuration</Label>
+                        <div className="space-y-2">
+                          <Input 
+                            placeholder="Button Label (e.g. View Catalog)" 
+                            value={field.placeholder || ''} 
+                            onChange={(e) => updateField(field.id, { placeholder: e.target.value })} 
+                          />
+                          <select 
+                            value={field.options?.[0] || ""}
+                            onChange={(e) => updateField(field.id, { options: [e.target.value] })}
+                            className="w-full h-9 text-sm rounded border"
+                          >
+                            <option value="">Select Target Form</option>
+                            {useForms().forms.map(f => (
+                              <option key={f.id} value={f.id}>{f.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                    {field.type !== 'checkbox' && field.type !== 'date' && field.type !== 'file' && field.type !== 'link_button' && (
                       <div className="space-y-2">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Placeholder</Label>
                         <Input 

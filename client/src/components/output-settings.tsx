@@ -283,13 +283,14 @@ export default function OutputSettings({
                           <div className="flex gap-1 items-center">
                             <select 
                               value={cell.type}
-                              onChange={(e) => updateCell(rIndex, cIndex, { type: e.target.value as "text" | "variable" | "lookup" | "formula" })}
+                              onChange={(e) => updateCell(rIndex, cIndex, { type: e.target.value as any })}
                               className="h-6 text-[10px] rounded border"
                             >
                               <option value="text">Txt</option>
                               <option value="variable">Var</option>
                               <option value="lookup">Lkp</option>
                               <option value="formula">Fx</option>
+                              <option value="link_button">Btn</option>
                             </select>
                             <Input 
                               type="color"
@@ -472,6 +473,25 @@ export default function OutputSettings({
                                   )}
                                 </>
                               )}
+                            </div>
+                          ) : cell.type === "link_button" ? (
+                            <div className="space-y-1">
+                              <Input 
+                                placeholder="Label"
+                                value={cell.placeholder || ""}
+                                onChange={(e) => updateCell(rIndex, cIndex, { placeholder: e.target.value })}
+                                className="h-7 text-xs"
+                              />
+                              <select 
+                                value={cell.value}
+                                onChange={(e) => updateCell(rIndex, cIndex, { value: e.target.value })}
+                                className="w-full h-7 text-xs rounded border"
+                              >
+                                <option value="">Target Form</option>
+                                {useForms().forms.map(f => (
+                                  <option key={f.id} value={f.id}>{f.title}</option>
+                                ))}
+                              </select>
                             </div>
                           ) : cell.type === "formula" ? (
                             <div className="space-y-1">

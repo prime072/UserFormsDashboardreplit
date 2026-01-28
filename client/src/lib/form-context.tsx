@@ -31,7 +31,8 @@ export type FieldType =
   | "select"
   | "radio"
   | "date"
-  | "file";
+  | "file"
+  | "link_button";
 export type OutputFormat = "thank_you" | "whatsapp" | "excel" | "docx" | "pdf";
 
 export interface FormField {
@@ -397,7 +398,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
     nthIndex?: number;
     queryField?: string;
     queryValue?: string;
-  }) => {
+  }, currentFormData?: Record<string, any>) => {
     try {
       const response = await fetch(`/api/forms/${lookupConfig.formId}/data`, {
         headers: { "x-user-id": user?.id || "" },
@@ -409,19 +410,22 @@ export function FormProvider({ children }: { children: ReactNode }) {
       let targetResponse;
       if (lookupConfig.lookupType === "first") {
         const offset = lookupConfig.nthIndex || 0;
-        // First row is the last in the array (sorted by submittedAt desc)
         targetResponse = data[data.length - 1 - offset];
       } else if (lookupConfig.lookupType === "last") {
         const offset = lookupConfig.nthIndex || 0;
-        // Last row is the first in the array (sorted by submittedAt desc)
         targetResponse = data[offset];
       } else if (lookupConfig.lookupType === "nth") {
         const index = lookupConfig.nthIndex || 1;
         targetResponse = data[data.length - index];
       } else if (lookupConfig.lookupType === "query" && lookupConfig.queryField) {
+        let qVal = lookupConfig.queryValue || "";
+        if (currentFormData && currentFormData[qVal] !== undefined) {
+          qVal = String(currentFormData[qVal]);
+        }
+        
         targetResponse = data.find((r: any) => 
           String(r.data[lookupConfig.queryField!] || "").toLowerCase() === 
-          String(lookupConfig.queryValue || "").toLowerCase()
+          qVal.toLowerCase()
         );
       }
 

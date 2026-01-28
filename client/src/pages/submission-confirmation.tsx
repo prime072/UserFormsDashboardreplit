@@ -89,7 +89,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
       for (const cell of allCells) {
         if (cell.type === "lookup" && cell.lookupConfig) {
           try {
-            const val = await resolveLookup(cell.lookupConfig);
+            const val = await resolveLookup(cell.lookupConfig, data);
             lookups[cell.id] = val;
           } catch (err) {
             lookups[cell.id] = "0";
@@ -346,6 +346,21 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
             >
               Submit Another Response
             </Button>
+            {form.gridConfig?.rows?.some((r: any) => r.cells.some((c: any) => c.type === 'link_button')) && (
+              <div className="pt-4 border-t flex flex-col gap-2">
+                <Label className="text-xs text-slate-500 text-center">Quick Links</Label>
+                {form.gridConfig.rows.map((r: any) => r.cells.map((c: any) => c.type === 'link_button' && (
+                  <Button 
+                    key={c.id}
+                    variant="ghost" 
+                    className="w-full text-primary"
+                    onClick={() => window.open(`/s/${c.value}`, '_blank')}
+                  >
+                    {c.placeholder || "Open Form"}
+                  </Button>
+                )))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

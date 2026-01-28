@@ -44,6 +44,16 @@ export default function PublicForm() {
               const respData = await respRes.json();
               setData(respData.data);
             }
+          } else {
+            const savedSession = localStorage.getItem(`auth_session_${formId}`);
+            if (savedSession) {
+              const session = JSON.parse(savedSession);
+              if (Date.now() < session.expires) {
+                setPrivateUser(session.user);
+              } else {
+                localStorage.removeItem(`auth_session_${formId}`);
+              }
+            }
           }
         }
       } catch (error) {
@@ -94,6 +104,10 @@ export default function PublicForm() {
       }
 
       setPrivateUser(user);
+      localStorage.setItem(`auth_session_${formId}`, JSON.stringify({
+        user,
+        expires: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+      }));
       toast({ title: "Success", description: "Logged in successfully" });
     } catch (error) {
       toast({ title: "Error", description: "Login failed", variant: "destructive" });
@@ -220,6 +234,16 @@ export default function PublicForm() {
                       </div>
                     )}
                   </div>
+                )}
+                {field.type === 'link_button' && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => window.open(`/s/${field.options?.[0]}`, '_blank')}
+                  >
+                    {field.placeholder || "View"}
+                  </Button>
                 )}
                 {field.type === 'file' && (
                   <div className="space-y-2">
