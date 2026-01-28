@@ -418,9 +418,8 @@ export default function OutputSettings({
                                     />
                                   )}
                                   {cell.lookupConfig?.lookupType === "query" && (
-                                    <div className="flex gap-1">
-                                      <Input 
-                                        placeholder="Filter Field"
+                                    <div className="space-y-1">
+                                      <select 
                                         value={cell.lookupConfig?.queryField || ""}
                                         onChange={(e) => updateCell(rIndex, cIndex, { 
                                           lookupConfig: { 
@@ -428,19 +427,47 @@ export default function OutputSettings({
                                             queryField: e.target.value 
                                           } 
                                         })}
-                                        className="h-7 text-xs flex-1"
-                                      />
-                                      <Input 
-                                        placeholder="Value"
-                                        value={cell.lookupConfig?.queryValue || ""}
-                                        onChange={(e) => updateCell(rIndex, cIndex, { 
-                                          lookupConfig: { 
-                                            ...cell.lookupConfig!, 
-                                            queryValue: e.target.value 
-                                          } 
-                                        })}
-                                        className="h-7 text-xs flex-1"
-                                      />
+                                        className="w-full h-7 text-xs rounded border"
+                                      >
+                                        <option value="">Filter Field</option>
+                                        {useForms().getForm(cell.lookupConfig.formId)?.fields.map(f => (
+                                          <option key={f.id} value={f.label}>{f.label}</option>
+                                        ))}
+                                      </select>
+                                      <div className="flex gap-1">
+                                        <select 
+                                          value={fields.some(f => f.label === cell.lookupConfig?.queryValue) ? cell.lookupConfig?.queryValue : (cell.lookupConfig?.queryValue ? "custom" : "")}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            updateCell(rIndex, cIndex, { 
+                                              lookupConfig: { 
+                                                ...cell.lookupConfig!, 
+                                                queryValue: val === "custom" ? "" : val 
+                                              } 
+                                            });
+                                          }}
+                                          className="h-7 text-xs flex-1 rounded border"
+                                        >
+                                          <option value="">Select Value</option>
+                                          {fields.map(f => (
+                                            <option key={f.id} value={f.label}>{f.label}</option>
+                                          ))}
+                                          <option value="custom">Other (Custom)</option>
+                                        </select>
+                                        {(!fields.some(f => f.label === cell.lookupConfig?.queryValue) || cell.lookupConfig?.queryValue === "") && (
+                                          <Input 
+                                            placeholder="Value"
+                                            value={cell.lookupConfig?.queryValue || ""}
+                                            onChange={(e) => updateCell(rIndex, cIndex, { 
+                                              lookupConfig: { 
+                                                ...cell.lookupConfig!, 
+                                                queryValue: e.target.value 
+                                              } 
+                                            })}
+                                            className="h-7 text-xs flex-1"
+                                          />
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </>

@@ -72,7 +72,7 @@ export default function SubmissionConfirmation() {
   return <SubmissionConfirmationContent form={form} response={response} resolveLookup={resolveLookup} submissionId={submissionId} />;
 }
 
-function SubmissionConfirmationContent({ form, response, resolveLookup, submissionId }: { form: any, response: any, resolveLookup: any, submissionId: string }) {
+function SubmissionConfirmationContent({ form, response, resolveLookup, submissionId }: { form: any, response: any, resolveLookup: any, submissionId?: string }) {
   const [resolvedLookups, setResolvedLookups] = useState<Record<string, string>>({});
   const [, setLocation] = useLocation();
   const data = response.data;
