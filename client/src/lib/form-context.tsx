@@ -101,9 +101,7 @@ export interface Form {
   confirmationText?: string;
   gridConfig?: GridConfig;
   whatsappFormat?: string;
-  projectId?: string;
-  createdAt: string;
-  updatedAt: string;
+  allowEditing?: boolean;
 }
 
 export interface FormResponse {
@@ -127,7 +125,6 @@ type FormContextType = {
     whatsappFormat?: string,
     gridConfig?: GridConfig,
     allowEditing?: boolean,
-    projectId?: string,
   ) => Promise<void>;
   updateForm: (
     id: string,
@@ -141,7 +138,6 @@ type FormContextType = {
     whatsappFormat?: string,
     gridConfig?: GridConfig,
     allowEditing?: boolean,
-    projectId?: string,
   ) => Promise<void>;
   deleteForm: (id: string) => Promise<void>;
   getForm: (id: string) => Form | undefined;
@@ -222,7 +218,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
     whatsappFormat?: string,
     gridConfig?: GridConfig,
     allowEditing: boolean = true,
-    projectId?: string,
   ) => {
     if (!user?.id) return;
     try {
@@ -243,7 +238,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
           whatsappFormat,
           gridConfig,
           allowEditing,
-          projectId,
         }),
       });
       if (response.ok) {
@@ -267,7 +261,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
     whatsappFormat?: string,
     gridConfig?: GridConfig,
     allowEditing: boolean = true,
-    projectId?: string,
   ) => {
     if (!user?.id) return;
     try {
@@ -288,7 +281,6 @@ export function FormProvider({ children }: { children: ReactNode }) {
           whatsappFormat,
           gridConfig,
           allowEditing,
-          projectId,
         }),
       });
       if (response.ok) {

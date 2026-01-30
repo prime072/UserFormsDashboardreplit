@@ -37,27 +37,6 @@ export default function FormBuilder() {
   const [gridConfig, setGridConfig] = useState<GridConfig>({ headers: [], rows: [] });
   const [allowEditing, setAllowEditing] = useState(true);
 
-  const [projectId, setProjectId] = useState<string | undefined>();
-  const [projects, setProjects] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const res = await fetch("/api/projects", {
-          headers: { "x-user-id": user?.id || "" }
-        });
-        if (res.ok) setProjects(await res.json());
-      } catch (e) { console.error(e); }
-    };
-    if (user?.id) fetchProjects();
-  }, [user?.id]);
-
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const pId = urlParams.get('projectId');
-    if (pId) setProjectId(pId);
-  }, []);
-
   useEffect(() => {
     if (isEditing && formId) {
       const existingForm = getForm(formId);
@@ -71,7 +50,6 @@ export default function FormBuilder() {
         setWhatsappFormat(existingForm.whatsappFormat || "");
         setGridConfig(existingForm.gridConfig || { headers: [], rows: [] });
         setAllowEditing(existingForm.allowEditing ?? true);
-        setProjectId(existingForm.projectId);
       }
     }
   }, [isEditing, formId, getForm]);
@@ -116,10 +94,10 @@ export default function FormBuilder() {
   const handleSave = async () => {
     try {
       if (isEditing && formId) {
-        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, projectId);
+        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing);
         toast({ title: "Form Updated", description: "Your changes have been saved." });
       } else {
-        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, projectId);
+        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing);
         toast({ title: "Form Created", description: "Your form has been created successfully." });
       }
       setTimeout(() => setLocation("/forms"), 1000);
@@ -170,24 +148,6 @@ export default function FormBuilder() {
         </div>
 
         <div className="mb-8 space-y-6">
-          <div className="bg-white p-6 rounded-lg border border-slate-200">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <Label className="text-sm font-semibold block">Project Assignment</Label>
-                <p className="text-xs text-slate-500">Assign this form to a project for better organization.</p>
-              </div>
-              <Select value={projectId || "unassigned"} onValueChange={(v) => setProjectId(v === "unassigned" ? undefined : v)}>
-                <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select Project" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div className="bg-white p-6 rounded-lg border border-slate-200">
             <div className="flex items-center justify-between">
               <div>

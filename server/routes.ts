@@ -26,63 +26,6 @@ export async function registerRoutes(
   // Register authentication routes
   registerAuthRoutes(app);
   
-  // Project routes
-  app.get("/api/projects", isAuthenticated, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const projects = await storage.getProjectsByUserId(userId);
-      res.json(projects);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch projects" });
-    }
-  });
-
-  app.post("/api/projects", isAuthenticated, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const { name, description } = req.body;
-      if (!name) {
-        return res.status(400).json({ message: "Project name is required" });
-      }
-      const project = await storage.createProject({ 
-        name, 
-        description: description || "", 
-        userId 
-      });
-      res.status(201).json(project);
-    } catch (error) {
-      console.error("Error creating project:", error);
-      res.status(500).json({ message: "Failed to create project" });
-    }
-  });
-
-  app.get("/api/projects/:id/forms", isAuthenticated, async (req, res) => {
-    try {
-      const forms = await storage.getFormsByProjectId(req.params.id);
-      res.json(forms);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch project forms" });
-    }
-  });
-
-  app.post("/api/projects/:id/users", isAuthenticated, async (req, res) => {
-    try {
-      const projectUser = await storage.createProjectUser({ ...req.body, projectId: req.params.id });
-      res.status(201).json(projectUser);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create project user" });
-    }
-  });
-
-  app.get("/api/projects/:id/users", isAuthenticated, async (req, res) => {
-    try {
-      const users = await storage.getProjectUsers(req.params.id);
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch project users" });
-    }
-  });
-
   // Form routes
   // Get live total responses from MongoDB
   app.get("/api/user/total-responses", isAuthenticated, async (req, res) => {
@@ -149,11 +92,10 @@ export async function registerRoutes(
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, projectId, ...bodyRest } = req.body;
+      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, ...bodyRest } = req.body;
       const validatedData = insertFormSchema.parse({
         ...bodyRest,
         userId,
-        projectId,
       });
       const formDataWithExtras = {
         ...validatedData,
@@ -163,7 +105,6 @@ export async function registerRoutes(
         gridConfig,
         whatsappFormat,
         allowEditing: allowEditing ?? true,
-        projectId,
       } as any;
       const form = await storage.createForm(formDataWithExtras);
       // Update user metrics
@@ -192,7 +133,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, projectId, ...bodyRest } = req.body;
+      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, ...bodyRest } = req.body;
       const validatedData = insertFormSchema.partial().parse(bodyRest);
       const updateDataWithExtras = {
         ...validatedData,
@@ -202,7 +143,6 @@ export async function registerRoutes(
         ...(gridConfig !== undefined && { gridConfig }),
         ...(whatsappFormat !== undefined && { whatsappFormat }),
         ...(allowEditing !== undefined && { allowEditing }),
-        ...(projectId !== undefined && { projectId }),
       } as any;
       const updatedForm = await storage.updateForm(req.params.id, updateDataWithExtras);
       res.json(updatedForm);
