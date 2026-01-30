@@ -202,7 +202,7 @@ export class MongoDBStorage implements IStorage {
       .lean();
     return docs.map((doc: any) => {
       const { _id, ...rest } = doc;
-      return rest as Form;
+      return { ...rest, id: rest.id || _id.toString() } as Form;
     });
   }
 
@@ -213,7 +213,7 @@ export class MongoDBStorage implements IStorage {
       .lean();
     return docs.map((doc: any) => {
       const { _id, ...rest } = doc;
-      return rest as Form;
+      return { ...rest, id: rest.id || _id.toString() } as Form;
     });
   }
 

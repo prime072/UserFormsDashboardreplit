@@ -45,7 +45,10 @@ export default function MyForms() {
       const res = await fetch("/api/projects", {
         headers: { "x-user-id": user?.id || "" }
       });
-      if (res.ok) setProjects(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data);
+      }
     } catch (e) { console.error(e); }
   };
 
