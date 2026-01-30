@@ -38,6 +38,19 @@ export default function FormBuilder() {
   const [allowEditing, setAllowEditing] = useState(true);
 
   const [projectId, setProjectId] = useState<string | undefined>();
+  const [projects, setProjects] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await fetch("/api/projects", {
+          headers: { "x-user-id": user?.id || "" }
+        });
+        if (res.ok) setProjects(await res.json());
+      } catch (e) { console.error(e); }
+    };
+    if (user?.id) fetchProjects();
+  }, [user?.id]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -157,6 +170,24 @@ export default function FormBuilder() {
         </div>
 
         <div className="mb-8 space-y-6">
+          <div className="bg-white p-6 rounded-lg border border-slate-200">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label className="text-sm font-semibold block">Project Assignment</Label>
+                <p className="text-xs text-slate-500">Assign this form to a project for better organization.</p>
+              </div>
+              <Select value={projectId || "unassigned"} onValueChange={(v) => setProjectId(v === "unassigned" ? undefined : v)}>
+                <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select Project" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {projects.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="bg-white p-6 rounded-lg border border-slate-200">
             <div className="flex items-center justify-between">
               <div>

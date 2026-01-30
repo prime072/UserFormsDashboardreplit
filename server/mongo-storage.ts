@@ -61,6 +61,7 @@ const PrivateUserModel = mongoose.model("PrivateUser", privateUserSchema, "priva
 
 export class MongoDBStorage implements IStorage {
   private connected = false;
+  private db: any;
 
   async connect() {
     if (this.connected) return;
@@ -73,6 +74,7 @@ export class MongoDBStorage implements IStorage {
     try {
       await mongoose.connect(mongoUri);
       this.connected = true;
+      this.db = mongoose.connection.db;
       console.log("Connected to MongoDB");
     } catch (error) {
       console.error("MongoDB connection error:", error);
@@ -202,6 +204,63 @@ export class MongoDBStorage implements IStorage {
       const { _id, ...rest } = doc;
       return rest as Form;
     });
+  }
+
+  async getFormsByProjectId(projectId: string): Promise<Form[]> {
+    await this.connect();
+    const docs = await FormModel.find({ projectId })
+      .sort({ updatedAt: -1 })
+      .lean();
+    return docs.map((doc: any) => {
+      const { _id, ...rest } = doc;
+      return rest as Form;
+    });
+  }
+
+  async createProject(project: any): Promise<Project> {
+    await this.connect();
+    const id = Math.random().toString(36).substr(2, 9);
+    const newProject = {
+      id,
+      ...project,
+      createdAt: new Date(),
+    };
+    const result = await this.db.collection('projects').insertOne(newProject);
+    return newProject as any;
+  }
+
+  async getProjectsByUserId(userId: string): Promise<Project[]> {
+    await this.connect();
+    const result = await this.db.collection('projects').find({ userId }).sort({ createdAt: -1 }).toArray();
+    return result.map(doc => ({ ...doc, id: doc.id || doc._id.toString() } as any));
+  }
+
+  async getProject(id: string): Promise<Project | undefined> {
+    await this.connect();
+    const result = await this.db.collection('projects').findOne({ id });
+    if (!result) return undefined;
+    return { ...result, id: result.id || result._id.toString() } as any;
+  }
+
+  async createProjectUser(projectUser: any): Promise<ProjectUser> {
+    await this.connect();
+    const id = Math.random().toString(36).substr(2, 9);
+    const newProjectUser = { id, ...projectUser };
+    await this.db.collection('project_users').insertOne(newProjectUser);
+    return newProjectUser as any;
+  }
+
+  async getProjectUsers(projectId: string): Promise<ProjectUser[]> {
+    await this.connect();
+    const result = await this.db.collection('project_users').find({ projectId }).toArray();
+    return result.map(doc => ({ ...doc, id: doc.id || doc._id.toString() } as any));
+  }
+
+  async getProjectUser(projectId: string, userId: string): Promise<ProjectUser | undefined> {
+    await this.connect();
+    const result = await this.db.collection('project_users').findOne({ projectId, userId });
+    if (!result) return undefined;
+    return { ...result, id: result.id || result._id.toString() } as any;
   }
 
   async createForm(form: InsertForm): Promise<Form> {
