@@ -120,7 +120,11 @@ export default function MyForms() {
   };
 
   const formsByProject = (projectId: string | null) => {
-    return forms.filter(f => f.projectId === projectId);
+    return forms.filter(f => {
+      // In the database/context, projectId might be null, undefined, or empty string for unassigned forms
+      if (projectId === null) return !f.projectId || f.projectId === "";
+      return f.projectId === projectId;
+    });
   };
 
   if (isSuspended) {

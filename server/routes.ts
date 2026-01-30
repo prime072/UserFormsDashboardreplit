@@ -40,9 +40,18 @@ export async function registerRoutes(
   app.post("/api/projects", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const project = await storage.createProject({ ...req.body, userId });
+      const { name, description } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Project name is required" });
+      }
+      const project = await storage.createProject({ 
+        name, 
+        description: description || "", 
+        userId 
+      });
       res.status(201).json(project);
     } catch (error) {
+      console.error("Error creating project:", error);
       res.status(500).json({ message: "Failed to create project" });
     }
   });

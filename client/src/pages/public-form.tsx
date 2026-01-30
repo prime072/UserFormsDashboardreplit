@@ -141,6 +141,8 @@ export default function PublicForm() {
     }
   };
 
+  const hasLinkButtons = form.fields.some((f: any) => f.type === 'link_button');
+
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>;
   if (!form) return <div className="min-h-screen flex items-center justify-center">Form Not Found</div>;
 
@@ -240,7 +242,7 @@ export default function PublicForm() {
                     type="button" 
                     variant="outline" 
                     className="w-full"
-                    onClick={() => window.open(`/s/${field.options?.[0]}`, '_blank')}
+                    onClick={() => window.open(`${field.placeholder}`, '_blank')}
                   >
                     {field.placeholder || "View"}
                   </Button>
@@ -264,7 +266,9 @@ export default function PublicForm() {
                 )}
               </div>
             ))}
-            <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />} Submit Response</Button>
+            {!hasLinkButtons && (
+              <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />} Submit Response</Button>
+            )}
           </form>
         </CardContent>
       </Card>
