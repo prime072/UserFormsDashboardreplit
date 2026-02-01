@@ -169,6 +169,8 @@ export default function PublicForm() {
     );
   }
 
+  const hasLinkButton = form.fields.some((f: any) => f.type === 'link_button');
+
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4">
       <Card className="max-w-2xl mx-auto shadow-lg">
@@ -264,7 +266,12 @@ export default function PublicForm() {
                 )}
               </div>
             ))}
-            <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />} Submit Response</Button>
+            {!hasLinkButton && (
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />} 
+                Submit Response
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>
