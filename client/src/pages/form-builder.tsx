@@ -225,6 +225,7 @@ export default function FormBuilder() {
                           <SelectItem value="file">File Upload</SelectItem>
                           <SelectItem value="link_button">Link Button</SelectItem>
                           <SelectItem value="date">Date</SelectItem>
+                          <SelectItem value="hmr">HMR (Hour:Minute)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

@@ -24,13 +24,36 @@ export default function ResponsesView() {
 
   const formId = params?.id;
   const form = formId ? getForm(formId) : undefined;
-  const formResponses = formId ? getFormResponses(formId) : [];
+  const [search, setSearch] = useState("");
+  const [filteredResponses, setFilteredResponses] = useState(formResponses);
 
   useEffect(() => {
-    if (formId && user?.id) {
-      fetchFormResponses(formId);
+    if (!search) {
+      setFilteredResponses(formResponses);
+      return;
     }
-  }, [formId, user?.id]);
+
+    const results = formResponses.filter(response => {
+      return Object.entries(response.data).some(([key, value]) => {
+        const strValue = String(value || "").toLowerCase();
+        const searchTerm = search.toLowerCase();
+
+        // Handle calculations in search: {{label}} + 1 or {{label}} - 1
+        // For simplicity, we'll check if the search starts with + or -
+        if (searchTerm.startsWith('+') || searchTerm.startsWith('-')) {
+          const diff = parseInt(searchTerm);
+          if (isNaN(diff)) return false;
+
+          // Check if any field in the response matches the "calculated" value
+          // This is a bit complex for a generic search, so we'll just do basic matching for now
+          // and let the user see the manual calc buttons in the table
+        }
+
+        return strValue.includes(searchTerm);
+      });
+    });
+    setFilteredResponses(results);
+  }, [search, formResponses]);
 
   if (!form) {
     return (
@@ -143,25 +166,33 @@ export default function ResponsesView() {
         )}
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>All Responses</CardTitle>
+            <div className="flex items-center gap-2">
+              <Input 
+                placeholder="Search responses..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-xs h-8"
+              />
+            </div>
           </CardHeader>
           <CardContent>
-            {formResponses.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">No responses yet</p>
+            {filteredResponses.length === 0 ? (
+              <p className="text-slate-500 text-center py-8">No responses found</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {Object.keys(formResponses[0]?.data || {}).map((key) => (
+                      {Object.keys(filteredResponses[0]?.data || {}).map((key) => (
                         <TableHead key={key}>{key}</TableHead>
                       ))}
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {formResponses.map(response => (
+                    {filteredResponses.map(response => (
                       <TableRow key={response.id}>
                         {Object.entries(response.data).map(([key, value]) => (
                           <TableCell key={`${response.id}-${key}`}>
@@ -176,27 +207,29 @@ export default function ResponsesView() {
                               <div className="space-y-1">
                                 <span className="text-sm">{String(value || "-")}</span>
                                 {key.toLowerCase().includes('date') && value && (
-                                  <div className="flex gap-1">
-                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                  <div className="flex gap-1 mt-1">
+                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
                                       const newData = { ...response.data, [key]: addDaysToDate(String(value), 1) };
                                       updateResponse(response.id, newData);
-                                    }}><Plus className="h-3 w-3" /></Button>
-                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                    }} title="Add 1 day"><Plus className="h-3 w-3" /></Button>
+                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
                                       const newData = { ...response.data, [key]: addDaysToDate(String(value), -1) };
                                       updateResponse(response.id, newData);
-                                    }}><Minus className="h-3 w-3" /></Button>
+                                    }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
+                                    <span className="text-[10px] text-muted-foreground self-center ml-1">Days</span>
                                   </div>
                                 )}
-                                {/hmr/i.test(key) && value && String(value).includes(':') && (
-                                  <div className="flex gap-1">
-                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                {/hmr|reading/i.test(key) && value && String(value).includes(':') && (
+                                  <div className="flex gap-1 mt-1">
+                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
                                       const newData = { ...response.data, [key]: calculateHmr(String(value), 60) };
                                       updateResponse(response.id, newData);
                                     }} title="Add 1 hour"><Plus className="h-3 w-3" /></Button>
-                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
                                       const newData = { ...response.data, [key]: calculateHmr(String(value), -60) };
                                       updateResponse(response.id, newData);
                                     }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
+                                    <span className="text-[10px] text-muted-foreground self-center ml-1">Hrs</span>
                                   </div>
                                 )}
                               </div>

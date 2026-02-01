@@ -31,6 +31,7 @@ export type FieldType =
   | "select"
   | "radio"
   | "date"
+  | "hmr"
   | "file"
   | "link_button";
 export type OutputFormat = "thank_you" | "whatsapp" | "excel" | "docx" | "pdf";
