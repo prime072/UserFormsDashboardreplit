@@ -24,8 +24,9 @@ export default function ResponsesView() {
 
   const formId = params?.id;
   const form = formId ? getForm(formId) : undefined;
+  const formResponses = formId ? getFormResponses(formId) : [];
   const [search, setSearch] = useState("");
-  const [filteredResponses, setFilteredResponses] = useState(formResponses);
+  const [filteredResponses, setFilteredResponses] = useState<any[]>([]);
 
   useEffect(() => {
     if (!search) {
@@ -33,22 +34,10 @@ export default function ResponsesView() {
       return;
     }
 
-    const results = formResponses.filter(response => {
+    const results = formResponses.filter((response: any) => {
       return Object.entries(response.data).some(([key, value]) => {
         const strValue = String(value || "").toLowerCase();
         const searchTerm = search.toLowerCase();
-
-        // Handle calculations in search: {{label}} + 1 or {{label}} - 1
-        // For simplicity, we'll check if the search starts with + or -
-        if (searchTerm.startsWith('+') || searchTerm.startsWith('-')) {
-          const diff = parseInt(searchTerm);
-          if (isNaN(diff)) return false;
-
-          // Check if any field in the response matches the "calculated" value
-          // This is a bit complex for a generic search, so we'll just do basic matching for now
-          // and let the user see the manual calc buttons in the table
-        }
-
         return strValue.includes(searchTerm);
       });
     });
@@ -219,7 +208,7 @@ export default function ResponsesView() {
                                     <span className="text-[10px] text-muted-foreground self-center ml-1">Days</span>
                                   </div>
                                 )}
-                                {/hmr|reading/i.test(key) && value && String(value).includes(':') && (
+                                {/hmr|reading/i.test(key) && value && typeof value === 'string' && value.includes(':') && (
                                   <div className="flex gap-1 mt-1">
                                     <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
                                       const newData = { ...response.data, [key]: calculateHmr(String(value), 60) };
