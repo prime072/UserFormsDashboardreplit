@@ -247,6 +247,19 @@ export default function PublicForm() {
                     {field.placeholder || "View"}
                   </Button>
                 )}
+                {field.type === 'hmr' && (
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      required={field.required} 
+                      placeholder="0000:00" 
+                      pattern="^\d+:[0-5]\d$"
+                      title="Format: HHHH:MM (e.g., 1000:40)"
+                      value={formData[field.label] || ''} 
+                      onChange={e => setData({...formData, [field.label]: e.target.value})} 
+                    />
+                    <span className="text-xs text-slate-500 whitespace-nowrap">HHH:MM</span>
+                  </div>
+                )}
                 {field.type === 'file' && (
                   <div className="space-y-2">
                     <Input 

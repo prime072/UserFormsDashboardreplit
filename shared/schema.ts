@@ -58,3 +58,25 @@ export const insertResponseSchema = createInsertSchema(responses).omit({
 
 export type InsertResponse = z.infer<typeof insertResponseSchema>;
 export type Response = typeof responses.$inferSelect;
+
+export const hmrToMinutes = (hmr: string): number => {
+  const [hrs, mins] = hmr.split(':').map(Number);
+  return (hrs || 0) * 60 + (mins || 0);
+};
+
+export const minutesToHmr = (minutes: number): string => {
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hrs}:${mins.toString().padStart(2, '0')}`;
+};
+
+export const addDaysToDate = (date: string | Date, days: number): string => {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+};
+
+export const calculateHmr = (hmr: string, diffMinutes: number): string => {
+  const totalMinutes = hmrToMinutes(hmr) + diffMinutes;
+  return minutesToHmr(Math.max(0, totalMinutes));
+};

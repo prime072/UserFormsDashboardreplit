@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock } from "lucide-react";
+import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Plus, Minus } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
+import { addDaysToDate, calculateHmr } from "@shared/schema";
 
 export default function ResponsesView() {
   const [, setLocation] = useLocation();
@@ -172,7 +173,33 @@ export default function ResponsesView() {
                                 data-testid={`input-edit-${key}`}
                               />
                             ) : (
-                              <span className="text-sm">{String(value || "-")}</span>
+                              <div className="space-y-1">
+                                <span className="text-sm">{String(value || "-")}</span>
+                                {key.toLowerCase().includes('date') && value && (
+                                  <div className="flex gap-1">
+                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                      const newData = { ...response.data, [key]: addDaysToDate(String(value), 1) };
+                                      updateResponse(response.id, newData);
+                                    }}><Plus className="h-3 w-3" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                      const newData = { ...response.data, [key]: addDaysToDate(String(value), -1) };
+                                      updateResponse(response.id, newData);
+                                    }}><Minus className="h-3 w-3" /></Button>
+                                  </div>
+                                )}
+                                {/hmr/i.test(key) && value && String(value).includes(':') && (
+                                  <div className="flex gap-1">
+                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                      const newData = { ...response.data, [key]: calculateHmr(String(value), 60) };
+                                      updateResponse(response.id, newData);
+                                    }} title="Add 1 hour"><Plus className="h-3 w-3" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-4 w-4" onClick={() => {
+                                      const newData = { ...response.data, [key]: calculateHmr(String(value), -60) };
+                                      updateResponse(response.id, newData);
+                                    }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </TableCell>
                         ))}
