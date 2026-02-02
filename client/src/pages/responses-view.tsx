@@ -210,7 +210,7 @@ export default function ResponsesView() {
                           <TableCell key={`${response.id}-${key}`}>
                             {editingId === response.id ? (
                               <Input
-                                value={editData[key] || ""}
+                                value={(editData[key] as string) || ""}
                                 onChange={(e) => setEditData({ ...editData, [key]: e.target.value })}
                                 className="text-sm"
                                 data-testid={`input-edit-${key}`}
@@ -230,7 +230,7 @@ export default function ResponsesView() {
                                     }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
                                     <span className="text-[10px] text-muted-foreground self-center ml-1">Days</span>
                                   </div>
-                                )}
+                                ) as React.ReactNode}
                                 {/hmr|reading/i.test(key) && value && typeof value === 'string' && value.includes(':') && (
                                   <div className="flex gap-1 mt-1">
                                     <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
@@ -243,7 +243,7 @@ export default function ResponsesView() {
                                     }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
                                     <span className="text-[10px] text-muted-foreground self-center ml-1">Hrs</span>
                                   </div>
-                                )}
+                                ) as React.ReactNode}
                               </div>
                             )}
                           </TableCell>
