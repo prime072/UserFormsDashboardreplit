@@ -8,8 +8,6 @@ import {
   Download,
   FileJson,
   File,
-  Plus,
-  Minus,
 } from "lucide-react";
 import {
   generateExcel,
@@ -19,8 +17,6 @@ import {
   useForms,
 } from "@/lib/form-context";
 import { useState, useEffect } from "react";
-import { addDaysToDate, calculateHmr } from "@shared/schema";
-import { Label } from "@/components/ui/label";
 
 export default function SubmissionConfirmation() {
   const [match, params] = useRoute("/s/:id/confirmation/:submissionId");
@@ -76,25 +72,11 @@ export default function SubmissionConfirmation() {
   return <SubmissionConfirmationContent form={form} response={response} resolveLookup={resolveLookup} submissionId={submissionId} />;
 }
 
-function SubmissionConfirmationContent({ form, response: initialResponse, resolveLookup, submissionId }: { form: any, response: any, resolveLookup: any, submissionId?: string }) {
+function SubmissionConfirmationContent({ form, response, resolveLookup, submissionId }: { form: any, response: any, resolveLookup: any, submissionId?: string }) {
   const [resolvedLookups, setResolvedLookups] = useState<Record<string, string>>({});
   const [, setLocation] = useLocation();
-  const [response, setResponse] = useState(initialResponse);
-  const { updateResponse } = useForms();
   const data = response.data;
   const grid = form.gridConfig;
-
-  const handleUpdate = (newData: any) => {
-    setResponse({ ...response, data: newData });
-    if (submissionId) {
-      updateResponse(submissionId, newData);
-      fetch(`/api/responses/${submissionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: newData }),
-      });
-    }
-  };
 
   useEffect(() => {
     const fetchLookups = async () => {
@@ -103,6 +85,7 @@ function SubmissionConfirmationContent({ form, response: initialResponse, resolv
       const allCells: any[] = [];
       grid.rows.forEach((r: any) => r.cells.forEach((c: any) => allCells.push(c)));
 
+      // First pass: Resolve lookups
       for (const cell of allCells) {
         if (cell.type === "lookup" && cell.lookupConfig) {
           try {
@@ -114,19 +97,29 @@ function SubmissionConfirmationContent({ form, response: initialResponse, resolv
         }
       }
 
+      // Second pass: Resolve formulas
       const resolveFormula = (expression: string): string => {
         let evaluated = expression;
+        
+        // Replace variables {{Field}}
         Object.entries(data).forEach(([key, val]) => {
+          // Ensure we treat numeric strings as numbers in eval
           const numericVal = isNaN(Number(val)) ? 0 : Number(val);
           evaluated = evaluated.replace(new RegExp(`{{${key}}}`, "g"), String(numericVal));
         });
+
+        // Replace lookup references [[CellID]]
         Object.entries(lookups).forEach(([id, val]) => {
           const numericVal = isNaN(Number(val)) ? 0 : Number(val);
           evaluated = evaluated.replace(new RegExp(`\\[\\[${id}\\]\\]`, "g"), String(numericVal));
         });
+
         try {
+          // Basic math evaluation safely
+          // Remove any non-math characters for security
           const cleanExpr = evaluated.replace(/[^0-9+\-*/().\s]/g, "");
           if (!cleanExpr) return "0";
+          
           const result = Function(`"use strict"; return (${cleanExpr})`)();
           return isNaN(result) || !isFinite(result) ? "0" : String(result);
         } catch (e) {
@@ -142,6 +135,7 @@ function SubmissionConfirmationContent({ form, response: initialResponse, resolv
           lookups[cell.id] = parseFloat(rawVal).toFixed(precision);
         }
       }
+
       setResolvedLookups(lookups);
     };
     fetchLookups();
@@ -243,37 +237,7 @@ function SubmissionConfirmationContent({ form, response: initialResponse, resolv
                                   fontStyle: cell.italic ? "italic" : "normal",
                                 }}
                               >
-                                <div className="space-y-1">
-                                  <span>{val}</span>
-                                  {cell.type === "variable" && (
-                                    <>
-                                      {!!(cell.value.toLowerCase().includes('date') && val) && (
-                                        <div className="flex gap-1 mt-1">
-                                          <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                            const newData = { ...data, [cell.value]: addDaysToDate(String(val), 1) };
-                                            handleUpdate(newData);
-                                          }} title="Add 1 day"><Plus className="h-3 w-3" /></Button>
-                                          <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                            const newData = { ...data, [cell.value]: addDaysToDate(String(val), -1) };
-                                            handleUpdate(newData);
-                                          }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
-                                        </div>
-                                      )}
-                                      {!!(/hmr|reading/i.test(cell.value) && val && typeof val === 'string' && val.includes(':')) && (
-                                        <div className="flex gap-1 mt-1">
-                                          <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                            const newData = { ...data, [cell.value]: calculateHmr(String(val), 60) };
-                                            handleUpdate(newData);
-                                          }} title="Add 1 hour"><Plus className="h-3 w-3" /></Button>
-                                          <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                            const newData = { ...data, [cell.value]: calculateHmr(String(val), -60) };
-                                            handleUpdate(newData);
-                                          }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
-                                        </div>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
+                                {val}
                               </td>
                             );
                           })}
@@ -286,36 +250,10 @@ function SubmissionConfirmationContent({ form, response: initialResponse, resolv
                     {Object.entries(data).map(([key, val]) => (
                       <div
                         key={key}
-                        className="flex flex-col border-b pb-2"
+                        className="flex justify-between border-b pb-2"
                       >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{key}:</span>
-                          <span>{String(val)}</span>
-                        </div>
-                        {!!(key.toLowerCase().includes('date') && val) && (
-                          <div className="flex gap-1 mt-1">
-                            <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                              const newData = { ...data, [key]: addDaysToDate(String(val), 1) };
-                              handleUpdate(newData);
-                            }} title="Add 1 day"><Plus className="h-3 w-3" /></Button>
-                            <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                              const newData = { ...data, [key]: addDaysToDate(String(val), -1) };
-                              handleUpdate(newData);
-                            }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
-                          </div>
-                        )}
-                        {!!(/hmr|reading/i.test(key) && val && typeof val === 'string' && val.includes(':')) && (
-                          <div className="flex gap-1 mt-1">
-                            <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                              const newData = { ...data, [key]: calculateHmr(String(val), 60) };
-                              handleUpdate(newData);
-                            }} title="Add 1 hour"><Plus className="h-3 w-3" /></Button>
-                            <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                              const newData = { ...data, [key]: calculateHmr(String(val), -60) };
-                              handleUpdate(newData);
-                            }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
-                          </div>
-                        )}
+                        <span className="font-medium">{key}:</span>
+                        <span>{String(val)}</span>
                       </div>
                     ))}
                   </div>
