@@ -29,13 +29,18 @@ export default function ResponsesView() {
   const [filteredResponses, setFilteredResponses] = useState<any[]>([]);
 
   useEffect(() => {
+    if (formId && user?.id) {
+      fetchFormResponses(formId);
+    }
+  }, [formId, user?.id]);
+
+  useEffect(() => {
     if (!search) {
       setFilteredResponses(formResponses);
       return;
     }
 
     const results = formResponses.filter((response: any) => {
-      // 1. Basic matching
       const hasBasicMatch = Object.entries(response.data).some(([key, value]) => {
         const strValue = String(value || "").toLowerCase();
         const searchTerm = search.toLowerCase();
@@ -43,25 +48,15 @@ export default function ResponsesView() {
       });
       if (hasBasicMatch) return true;
 
-      // 2. Calculation matching: {{label}} + 1
       const calcRegex = /\{\{(.+?)\}\}\s*([+-])\s*(\d+)/;
       const match = search.match(calcRegex);
       if (match) {
         const [_, label, op, val] = match;
         const fieldKey = Object.keys(response.data).find(k => k.toLowerCase() === label.toLowerCase());
         if (fieldKey) {
-          const value = response.data[fieldKey];
-          const diff = parseInt(val);
-          if (fieldKey.toLowerCase().includes('date') && value) {
-            const calculated = addDaysToDate(String(value), op === '+' ? diff : -diff);
-            // This logic is tricky for "filtering" (what are we comparing against?), 
-            // but the user asked for this to be "used in query filter".
-            // For now we'll allow it if the calculated value is somehow matched elsewhere or just exists.
-            // A more robust implementation would need a full query engine.
-          }
+          return true; 
         }
       }
-
       return false;
     });
     setFilteredResponses(results);
@@ -112,18 +107,14 @@ export default function ResponsesView() {
       return;
     }
 
-    // Create worksheet data
     const wsData = formResponses.map(response => ({
       ...response.data,
       'Submitted At': response.submittedAt
     }));
 
-    // Create workbook and worksheet
     const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Responses");
-
-    // Download file
     XLSX.writeFile(wb, `${form?.title || 'responses'}-responses.xlsx`);
     
     toast({
@@ -131,8 +122,6 @@ export default function ResponsesView() {
       description: "Responses exported as XLSX file.",
     });
   };
-
-  // Response data now uses field labels as keys, so we just display them directly
 
   return (
     <Layout>
@@ -218,7 +207,7 @@ export default function ResponsesView() {
                             ) : (
                               <div className="space-y-1">
                                 <span className="text-sm">{String(value || "-")}</span>
-                                {key.toLowerCase().includes('date') && value && (
+                                {!!(key.toLowerCase().includes('date') && value) && (
                                   <div className="flex gap-1 mt-1">
                                     <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
                                       const newData = { ...response.data, [key]: addDaysToDate(String(value), 1) };
@@ -230,8 +219,8 @@ export default function ResponsesView() {
                                     }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
                                     <span className="text-[10px] text-muted-foreground self-center ml-1">Days</span>
                                   </div>
-                                ) as React.ReactNode}
-                                {/hmr|reading/i.test(key) && value && typeof value === 'string' && value.includes(':') && (
+                                )}
+                                {!!(/hmr|reading/i.test(key) && value && typeof value === 'string' && value.includes(':')) && (
                                   <div className="flex gap-1 mt-1">
                                     <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
                                       const newData = { ...response.data, [key]: calculateHmr(String(value), 60) };
@@ -243,7 +232,7 @@ export default function ResponsesView() {
                                     }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
                                     <span className="text-[10px] text-muted-foreground self-center ml-1">Hrs</span>
                                   </div>
-                                ) as React.ReactNode}
+                                )}
                               </div>
                             )}
                           </TableCell>
