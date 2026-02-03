@@ -346,113 +346,137 @@ export default function OutputSettings({
                               />
                             </div>
                           </div>
-                          {cell.type === "variable" ? (
-                            <select 
-                              value={cell.value}
-                              onChange={(e) => updateCell(rIndex, cIndex, { value: e.target.value })}
-                              className="w-full h-7 text-xs rounded border"
-                            >
-                              <option value="">Select Field</option>
-                              {fields.map(f => (
-                                <option key={f.id} value={f.label}>{f.label}</option>
-                              ))}
-                            </select>
                           ) : (cell.type === "date_calc" || cell.type === "hmr_calc") ? (
                             <div className="space-y-1">
-                              <select 
-                                value={cell.calcConfig?.field1 || ""}
-                                onChange={(e) => updateCell(rIndex, cIndex, { 
-                                  calcConfig: { 
-                                    ...(cell.calcConfig || { operator: "+", unit: cell.type === "date_calc" ? "days" : "hours" }), 
-                                    field1: e.target.value 
-                                  } 
-                                })}
-                                className="w-full h-7 text-xs rounded border"
-                              >
-                                <option value="">Select Field 1</option>
-                                {fields.map(f => (
-                                  <option key={f.id} value={f.label}>{f.label}</option>
-                                ))}
-                              </select>
+                              <div className="flex gap-1">
+                                <select 
+                                  value={cell.calcConfig?.field1?.startsWith('[[') ? "cell" : (cell.calcConfig?.lookup1 ? "lookup" : "field")}
+                                  onChange={(e) => {
+                                    const mode = e.target.value;
+                                    updateCell(rIndex, cIndex, {
+                                      calcConfig: {
+                                        ...(cell.calcConfig || { operator: "+", unit: cell.type === "date_calc" ? "days" : "hours" }),
+                                        field1: mode === "cell" ? "[[]]" : "",
+                                        lookup1: mode === "lookup" ? { formId: "", fieldId: "", lookupType: "last" } : undefined
+                                      }
+                                    });
+                                  }}
+                                  className="h-7 text-[10px] rounded border"
+                                >
+                                  <option value="field">Field</option>
+                                  <option value="cell">Cell</option>
+                                  <option value="lookup">Lkp</option>
+                                </select>
+                                {cell.calcConfig?.lookup1 ? (
+                                  <div className="flex-1 space-y-1">
+                                    <select 
+                                      value={cell.calcConfig.lookup1.formId || ""}
+                                      onChange={(e) => updateCell(rIndex, cIndex, { 
+                                        calcConfig: { ...cell.calcConfig!, lookup1: { ...cell.calcConfig!.lookup1!, formId: e.target.value } } 
+                                      })}
+                                      className="w-full h-7 text-[10px] rounded border"
+                                    >
+                                      <option value="">Form</option>
+                                      {useForms().forms.map(f => <option key={f.id} value={f.id}>{f.title}</option>)}
+                                    </select>
+                                    {cell.calcConfig.lookup1.formId && (
+                                      <select 
+                                        value={cell.calcConfig.lookup1.fieldId || ""}
+                                        onChange={(e) => updateCell(rIndex, cIndex, { 
+                                          calcConfig: { ...cell.calcConfig!, lookup1: { ...cell.calcConfig!.lookup1!, fieldId: e.target.value } } 
+                                        })}
+                                        className="w-full h-7 text-[10px] rounded border"
+                                      >
+                                        <option value="">Field</option>
+                                        {useForms().getForm(cell.calcConfig.lookup1.formId)?.fields.map(f => <option key={f.id} value={f.label}>{f.label}</option>)}
+                                      </select>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <Input 
+                                    placeholder={cell.calcConfig?.field1?.startsWith('[[') ? "[[CellID]]" : "Field"}
+                                    value={cell.calcConfig?.field1 || ""}
+                                    onChange={(e) => updateCell(rIndex, cIndex, { calcConfig: { ...cell.calcConfig!, field1: e.target.value } })}
+                                    className="h-7 text-[10px] flex-1"
+                                  />
+                                )}
+                              </div>
                               <div className="flex gap-1">
                                 <select 
                                   value={cell.calcConfig?.operator || "+"}
-                                  onChange={(e) => updateCell(rIndex, cIndex, { 
-                                    calcConfig: { 
-                                      ...cell.calcConfig!, 
-                                      operator: e.target.value as any 
-                                    } 
-                                  })}
-                                  className="h-7 text-xs rounded border"
+                                  onChange={(e) => updateCell(rIndex, cIndex, { calcConfig: { ...cell.calcConfig!, operator: e.target.value as any } })}
+                                  className="h-7 text-[10px] rounded border"
                                 >
                                   <option value="+">+</option>
                                   <option value="-">-</option>
                                 </select>
                                 <select 
-                                  value={cell.calcConfig?.field2 ? "field" : "constant"}
+                                  value={cell.calcConfig?.field2 !== undefined ? (cell.calcConfig.field2.startsWith('[[') ? "cell" : (cell.calcConfig.lookup2 ? "lookup" : "field")) : "constant"}
                                   onChange={(e) => {
                                     const mode = e.target.value;
                                     updateCell(rIndex, cIndex, {
                                       calcConfig: {
                                         ...cell.calcConfig!,
-                                        field2: mode === "field" ? "" : undefined,
+                                        field2: mode === "field" ? "" : (mode === "cell" ? "[[]]" : undefined),
+                                        lookup2: mode === "lookup" ? { formId: "", fieldId: "", lookupType: "last" } : undefined,
                                         value: mode === "constant" ? "1" : undefined
                                       }
                                     });
                                   }}
-                                  className="h-7 text-xs rounded border flex-1"
+                                  className="h-7 text-[10px] rounded border flex-1"
                                 >
                                   <option value="constant">Value</option>
                                   <option value="field">Field</option>
+                                  <option value="cell">Cell</option>
+                                  <option value="lookup">Lkp</option>
                                 </select>
                               </div>
-                              {cell.calcConfig?.field2 !== undefined ? (
-                                <select 
+                              {cell.calcConfig?.lookup2 ? (
+                                <div className="space-y-1">
+                                  <select 
+                                    value={cell.calcConfig.lookup2.formId || ""}
+                                    onChange={(e) => updateCell(rIndex, cIndex, { 
+                                      calcConfig: { ...cell.calcConfig!, lookup2: { ...cell.calcConfig!.lookup2!, formId: e.target.value } } 
+                                    })}
+                                    className="w-full h-7 text-[10px] rounded border"
+                                  >
+                                    <option value="">Form</option>
+                                    {useForms().forms.map(f => <option key={f.id} value={f.id}>{f.title}</option>)}
+                                  </select>
+                                  {cell.calcConfig.lookup2.formId && (
+                                    <select 
+                                      value={cell.calcConfig.lookup2.fieldId || ""}
+                                      onChange={(e) => updateCell(rIndex, cIndex, { 
+                                        calcConfig: { ...cell.calcConfig!, lookup2: { ...cell.calcConfig!.lookup2!, fieldId: e.target.value } } 
+                                      })}
+                                      className="w-full h-7 text-[10px] rounded border"
+                                    >
+                                      <option value="">Field</option>
+                                      {useForms().getForm(cell.calcConfig.lookup2.formId)?.fields.map(f => <option key={f.id} value={f.label}>{f.label}</option>)}
+                                    </select>
+                                  )}
+                                </div>
+                              ) : cell.calcConfig?.field2 !== undefined ? (
+                                <Input 
+                                  placeholder={cell.calcConfig.field2.startsWith('[[') ? "[[CellID]]" : "Field"}
                                   value={cell.calcConfig.field2 || ""}
-                                  onChange={(e) => updateCell(rIndex, cIndex, { 
-                                    calcConfig: { 
-                                      ...cell.calcConfig!, 
-                                      field2: e.target.value 
-                                    } 
-                                  })}
-                                  className="w-full h-7 text-xs rounded border"
-                                >
-                                  <option value="">Select Field 2</option>
-                                  {fields.map(f => (
-                                    <option key={f.id} value={f.label}>{f.label}</option>
-                                  ))}
-                                </select>
+                                  onChange={(e) => updateCell(rIndex, cIndex, { calcConfig: { ...cell.calcConfig!, field2: e.target.value } })}
+                                  className="w-full h-7 text-[10px] rounded border"
+                                />
                               ) : (
                                 <div className="flex gap-1">
                                   <Input 
                                     type="number"
                                     value={cell.calcConfig?.value || "1"}
-                                    onChange={(e) => updateCell(rIndex, cIndex, { 
-                                      calcConfig: { 
-                                        ...cell.calcConfig!, 
-                                        value: e.target.value 
-                                      } 
-                                    })}
-                                    className="h-7 text-xs flex-1"
+                                    onChange={(e) => updateCell(rIndex, cIndex, { calcConfig: { ...cell.calcConfig!, value: e.target.value } })}
+                                    className="h-7 text-[10px] flex-1"
                                   />
                                   <select 
                                     value={cell.calcConfig?.unit || (cell.type === "date_calc" ? "days" : "hours")}
-                                    onChange={(e) => updateCell(rIndex, cIndex, { 
-                                      calcConfig: { 
-                                        ...cell.calcConfig!, 
-                                        unit: e.target.value as any 
-                                      } 
-                                    })}
-                                    className="h-7 text-xs rounded border"
+                                    onChange={(e) => updateCell(rIndex, cIndex, { calcConfig: { ...cell.calcConfig!, unit: e.target.value as any } })}
+                                    className="h-7 text-[10px] rounded border"
                                   >
-                                    {cell.type === "date_calc" ? (
-                                      <option value="days">Days</option>
-                                    ) : (
-                                      <>
-                                        <option value="hours">Hrs</option>
-                                        <option value="minutes">Min</option>
-                                      </>
-                                    )}
+                                    {cell.type === "date_calc" ? <option value="days">Days</option> : <><option value="hours">Hrs</option><option value="minutes">Min</option></>}
                                   </select>
                                 </div>
                               )}

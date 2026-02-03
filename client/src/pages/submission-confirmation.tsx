@@ -9,6 +9,7 @@ import {
   FileJson,
   File,
 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import {
   generateExcel,
   generateDocx,
@@ -98,6 +99,28 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
         }
       }
 
+      // Add calculation lookups support
+      for (const cell of allCells) {
+        if ((cell.type === "date_calc" || cell.type === "hmr_calc") && cell.calcConfig) {
+          if (cell.calcConfig.lookup1) {
+            try {
+              const val = await resolveLookup(cell.calcConfig.lookup1, data);
+              lookups[`${cell.id}_lk1`] = val;
+            } catch (err) {
+              lookups[`${cell.id}_lk1`] = "0";
+            }
+          }
+          if (cell.calcConfig.lookup2) {
+            try {
+              const val = await resolveLookup(cell.calcConfig.lookup2, data);
+              lookups[`${cell.id}_lk2`] = val;
+            } catch (err) {
+              lookups[`${cell.id}_lk2`] = "0";
+            }
+          }
+        }
+      }
+
       // Second pass: Resolve formulas
       const resolveFormula = (expression: string): string => {
         let evaluated = expression;
@@ -135,28 +158,60 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
           const precision = cell.formulaConfig.precision ?? 2;
           lookups[cell.id] = parseFloat(rawVal).toFixed(precision);
         } else if (cell.type === "date_calc" && cell.calcConfig) {
-          const val1 = data[cell.calcConfig.field1];
+          let val1 = data[cell.calcConfig.field1];
+          if (cell.calcConfig.field1.startsWith('[[')) {
+            const refId = cell.calcConfig.field1.replace(/[\[\]]/g, '');
+            val1 = lookups[refId];
+          } else if (cell.calcConfig.lookup1) {
+            val1 = lookups[`${cell.id}_lk1`];
+          }
+
           if (val1) {
-            let diff = 0;
-            if (cell.calcConfig.field2) {
-              // Difference between two dates in days
-              const d1 = new Date(val1);
-              const d2 = new Date(data[cell.calcConfig.field2]);
-              diff = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
-              lookups[cell.id] = String(cell.calcConfig.operator === "+" ? diff : -diff);
+            if (cell.calcConfig.field2 !== undefined) {
+              let val2 = data[cell.calcConfig.field2];
+              if (cell.calcConfig.field2.startsWith('[[')) {
+                const refId = cell.calcConfig.field2.replace(/[\[\]]/g, '');
+                val2 = lookups[refId];
+              } else if (cell.calcConfig.lookup2) {
+                val2 = lookups[`${cell.id}_lk2`];
+              }
+
+              if (val2) {
+                const d1 = new Date(val1);
+                const d2 = new Date(val2);
+                const diff = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
+                lookups[cell.id] = String(cell.calcConfig.operator === "+" ? diff : -diff);
+              }
             } else {
               const amount = parseInt(cell.calcConfig.value || "1");
               lookups[cell.id] = addDaysToDate(val1, cell.calcConfig.operator === "+" ? amount : -amount);
             }
           }
         } else if (cell.type === "hmr_calc" && cell.calcConfig) {
-          const val1 = data[cell.calcConfig.field1];
+          let val1 = data[cell.calcConfig.field1];
+          if (cell.calcConfig.field1.startsWith('[[')) {
+            const refId = cell.calcConfig.field1.replace(/[\[\]]/g, '');
+            val1 = lookups[refId];
+          } else if (cell.calcConfig.lookup1) {
+            val1 = lookups[`${cell.id}_lk1`];
+          }
+
           if (val1) {
-            if (cell.calcConfig.field2) {
-              const m1 = hmrToMinutes(String(val1));
-              const m2 = hmrToMinutes(String(data[cell.calcConfig.field2]));
-              const diff = cell.calcConfig.operator === "+" ? m1 + m2 : m1 - m2;
-              lookups[cell.id] = minutesToHmr(diff);
+            if (cell.calcConfig.field2 !== undefined) {
+              let val2 = data[cell.calcConfig.field2];
+              if (cell.calcConfig.field2.startsWith('[[')) {
+                const refId = cell.calcConfig.field2.replace(/[\[\]]/g, '');
+                val2 = lookups[refId];
+              } else if (cell.calcConfig.lookup2) {
+                val2 = lookups[`${cell.id}_lk2`];
+              }
+
+              if (val2) {
+                const m1 = hmrToMinutes(String(val1));
+                const m2 = hmrToMinutes(String(val2));
+                const diff = cell.calcConfig.operator === "+" ? m1 + m2 : m1 - m2;
+                lookups[cell.id] = minutesToHmr(diff);
+              }
             } else {
               const amount = parseInt(cell.calcConfig.value || "1");
               const minutes = cell.calcConfig.unit === "minutes" ? amount : amount * 60;

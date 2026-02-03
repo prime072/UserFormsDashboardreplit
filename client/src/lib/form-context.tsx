@@ -50,11 +50,13 @@ export interface FormTableCell {
   type: "text" | "variable" | "lookup" | "formula" | "hmr_calc" | "date_calc" | "link_button";
   value: string;
   calcConfig?: {
-    field1: string; // Label of field 1
-    field2?: string; // Label of field 2 (for subtraction/addition)
+    field1: string; // Label of field 1 OR [[CellID]]
+    field2?: string; // Label of field 2 OR [[CellID]]
     operator: "+" | "-";
     value?: string; // Constant value (e.g. "1" day)
     unit?: "days" | "hours" | "minutes";
+    lookup1?: { formId: string; fieldId: string; lookupType: string; nthIndex?: number; queryField?: string; queryValue?: string };
+    lookup2?: { formId: string; fieldId: string; lookupType: string; nthIndex?: number; queryField?: string; queryValue?: string };
   };
   formulaConfig?: {
     expression: string;
@@ -68,6 +70,7 @@ export interface FormTableCell {
     queryField?: string;
     queryValue?: string;
   };
+  placeholder?: string;
   color?: string;
   textColor?: string;
   fontSize?: number;
