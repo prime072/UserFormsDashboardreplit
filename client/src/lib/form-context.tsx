@@ -47,8 +47,15 @@ export interface FormField {
 
 export interface FormTableCell {
   id: string;
-  type: "text" | "variable" | "lookup" | "formula";
+  type: "text" | "variable" | "lookup" | "formula" | "hmr_calc" | "date_calc" | "link_button";
   value: string;
+  calcConfig?: {
+    field1: string; // Label of field 1
+    field2?: string; // Label of field 2 (for subtraction/addition)
+    operator: "+" | "-";
+    value?: string; // Constant value (e.g. "1" day)
+    unit?: "days" | "hours" | "minutes";
+  };
   formulaConfig?: {
     expression: string;
     precision?: number;

@@ -290,6 +290,8 @@ export default function OutputSettings({
                               <option value="variable">Var</option>
                               <option value="lookup">Lkp</option>
                               <option value="formula">Fx</option>
+                              <option value="date_calc">Date Calc</option>
+                              <option value="hmr_calc">HMR Calc</option>
                               <option value="link_button">Btn</option>
                             </select>
                             <Input 
@@ -355,6 +357,106 @@ export default function OutputSettings({
                                 <option key={f.id} value={f.label}>{f.label}</option>
                               ))}
                             </select>
+                          ) : (cell.type === "date_calc" || cell.type === "hmr_calc") ? (
+                            <div className="space-y-1">
+                              <select 
+                                value={cell.calcConfig?.field1 || ""}
+                                onChange={(e) => updateCell(rIndex, cIndex, { 
+                                  calcConfig: { 
+                                    ...(cell.calcConfig || { operator: "+", unit: cell.type === "date_calc" ? "days" : "hours" }), 
+                                    field1: e.target.value 
+                                  } 
+                                })}
+                                className="w-full h-7 text-xs rounded border"
+                              >
+                                <option value="">Select Field 1</option>
+                                {fields.map(f => (
+                                  <option key={f.id} value={f.label}>{f.label}</option>
+                                ))}
+                              </select>
+                              <div className="flex gap-1">
+                                <select 
+                                  value={cell.calcConfig?.operator || "+"}
+                                  onChange={(e) => updateCell(rIndex, cIndex, { 
+                                    calcConfig: { 
+                                      ...cell.calcConfig!, 
+                                      operator: e.target.value as any 
+                                    } 
+                                  })}
+                                  className="h-7 text-xs rounded border"
+                                >
+                                  <option value="+">+</option>
+                                  <option value="-">-</option>
+                                </select>
+                                <select 
+                                  value={cell.calcConfig?.field2 ? "field" : "constant"}
+                                  onChange={(e) => {
+                                    const mode = e.target.value;
+                                    updateCell(rIndex, cIndex, {
+                                      calcConfig: {
+                                        ...cell.calcConfig!,
+                                        field2: mode === "field" ? "" : undefined,
+                                        value: mode === "constant" ? "1" : undefined
+                                      }
+                                    });
+                                  }}
+                                  className="h-7 text-xs rounded border flex-1"
+                                >
+                                  <option value="constant">Value</option>
+                                  <option value="field">Field</option>
+                                </select>
+                              </div>
+                              {cell.calcConfig?.field2 !== undefined ? (
+                                <select 
+                                  value={cell.calcConfig.field2 || ""}
+                                  onChange={(e) => updateCell(rIndex, cIndex, { 
+                                    calcConfig: { 
+                                      ...cell.calcConfig!, 
+                                      field2: e.target.value 
+                                    } 
+                                  })}
+                                  className="w-full h-7 text-xs rounded border"
+                                >
+                                  <option value="">Select Field 2</option>
+                                  {fields.map(f => (
+                                    <option key={f.id} value={f.label}>{f.label}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex gap-1">
+                                  <Input 
+                                    type="number"
+                                    value={cell.calcConfig?.value || "1"}
+                                    onChange={(e) => updateCell(rIndex, cIndex, { 
+                                      calcConfig: { 
+                                        ...cell.calcConfig!, 
+                                        value: e.target.value 
+                                      } 
+                                    })}
+                                    className="h-7 text-xs flex-1"
+                                  />
+                                  <select 
+                                    value={cell.calcConfig?.unit || (cell.type === "date_calc" ? "days" : "hours")}
+                                    onChange={(e) => updateCell(rIndex, cIndex, { 
+                                      calcConfig: { 
+                                        ...cell.calcConfig!, 
+                                        unit: e.target.value as any 
+                                      } 
+                                    })}
+                                    className="h-7 text-xs rounded border"
+                                  >
+                                    {cell.type === "date_calc" ? (
+                                      <option value="days">Days</option>
+                                    ) : (
+                                      <>
+                                        <option value="hours">Hrs</option>
+                                        <option value="minutes">Min</option>
+                                      </>
+                                    )}
+                                  </select>
+                                </div>
+                              )}
+                            </div>
                           ) : cell.type === "lookup" ? (
                             <div className="space-y-1">
                               <select 

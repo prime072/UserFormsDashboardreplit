@@ -17,6 +17,7 @@ import {
   useForms,
 } from "@/lib/form-context";
 import { useState, useEffect } from "react";
+import { addDaysToDate, calculateHmr, hmrToMinutes, minutesToHmr } from "@shared/schema";
 
 export default function SubmissionConfirmation() {
   const [match, params] = useRoute("/s/:id/confirmation/:submissionId");
@@ -133,6 +134,35 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
           const rawVal = resolveFormula(cell.formulaConfig.expression);
           const precision = cell.formulaConfig.precision ?? 2;
           lookups[cell.id] = parseFloat(rawVal).toFixed(precision);
+        } else if (cell.type === "date_calc" && cell.calcConfig) {
+          const val1 = data[cell.calcConfig.field1];
+          if (val1) {
+            let diff = 0;
+            if (cell.calcConfig.field2) {
+              // Difference between two dates in days
+              const d1 = new Date(val1);
+              const d2 = new Date(data[cell.calcConfig.field2]);
+              diff = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
+              lookups[cell.id] = String(cell.calcConfig.operator === "+" ? diff : -diff);
+            } else {
+              const amount = parseInt(cell.calcConfig.value || "1");
+              lookups[cell.id] = addDaysToDate(val1, cell.calcConfig.operator === "+" ? amount : -amount);
+            }
+          }
+        } else if (cell.type === "hmr_calc" && cell.calcConfig) {
+          const val1 = data[cell.calcConfig.field1];
+          if (val1) {
+            if (cell.calcConfig.field2) {
+              const m1 = hmrToMinutes(String(val1));
+              const m2 = hmrToMinutes(String(data[cell.calcConfig.field2]));
+              const diff = cell.calcConfig.operator === "+" ? m1 + m2 : m1 - m2;
+              lookups[cell.id] = minutesToHmr(diff);
+            } else {
+              const amount = parseInt(cell.calcConfig.value || "1");
+              const minutes = cell.calcConfig.unit === "minutes" ? amount : amount * 60;
+              lookups[cell.id] = calculateHmr(String(val1), cell.calcConfig.operator === "+" ? minutes : -minutes);
+            }
+          }
         }
       }
 
@@ -217,7 +247,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                             let val = cell.value;
                             if (cell.type === "variable") {
                               val = String(data[cell.value] || "");
-                            } else if (cell.type === "lookup" || cell.type === "formula") {
+                            } else if (cell.type === "lookup" || cell.type === "formula" || cell.type === "date_calc" || cell.type === "hmr_calc") {
                               val = resolvedLookups[cell.id] || "Loading...";
                             }
                             return (
