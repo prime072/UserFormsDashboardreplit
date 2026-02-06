@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 interface OutputSettingsProps {
   selectedFormats: OutputFormat[];
@@ -346,6 +346,17 @@ export default function OutputSettings({
                               />
                             </div>
                           </div>
+                          {cell.type === "variable" ? (
+                            <select 
+                              value={cell.value}
+                              onChange={(e) => updateCell(rIndex, cIndex, { value: e.target.value })}
+                              className="w-full h-7 text-xs rounded border"
+                            >
+                              <option value="">Select Field</option>
+                              {fields.map(f => (
+                                <option key={f.id} value={f.label}>{f.label}</option>
+                              ))}
+                            </select>
                           ) : (cell.type === "date_calc" || cell.type === "hmr_calc") ? (
                             <div className="space-y-1">
                               <div className="flex gap-1">
