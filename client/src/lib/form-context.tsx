@@ -434,6 +434,18 @@ export function FormProvider({ children }: { children: ReactNode }) {
           qVal = String(currentFormData[qVal]);
         }
         
+        // Support relative date offsets like {{date}}-1
+        if (qVal.includes("{{date}}")) {
+          const today = new Date();
+          const match = qVal.match(/\{\{date\}\}([+-]\d+)?/);
+          if (match) {
+            const offset = parseInt(match[1] || "0");
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() + offset);
+            qVal = targetDate.toISOString().split('T')[0];
+          }
+        }
+        
         targetResponse = data.find((r: any) => 
           String(r.data[lookupConfig.queryField!] || "").toLowerCase() === 
           qVal.toLowerCase()
