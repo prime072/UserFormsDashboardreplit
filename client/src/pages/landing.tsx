@@ -44,12 +44,9 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4">
               <Link href="/auth">
                 <Button className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 h-12 text-base px-8" data-testid="button-start-free">
-                  Start Building Free
+                  Get Started
                 </Button>
               </Link>
-              <Button variant="outline" className="h-12 text-base px-8" data-testid="button-watch-demo">
-                Watch Demo
-              </Button>
             </div>
             <p className="text-sm text-slate-500 mt-6">No credit card required. Free forever plan available.</p>
           </motion.div>
