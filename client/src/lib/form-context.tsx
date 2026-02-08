@@ -434,15 +434,28 @@ export function FormProvider({ children }: { children: ReactNode }) {
           qVal = String(currentFormData[qVal]);
         }
         
-        // Support relative date offsets like {{date}}-1
-        if (qVal.includes("{{date}}")) {
-          const today = new Date();
-          const match = qVal.match(/\{\{date\}\}([+-]\d+)?/);
+        // Support relative date offsets like {{date}}-1 or {{Field}}-1
+        if (qVal.includes("{{")) {
+          const match = qVal.match(/\{\{([^}]+)\}\}([+-]\d+)?/);
           if (match) {
-            const offset = parseInt(match[1] || "0");
-            const targetDate = new Date(today);
-            targetDate.setDate(today.getDate() + offset);
-            qVal = targetDate.toISOString().split('T')[0];
+            const fieldKey = match[1];
+            const offset = parseInt(match[2] || "0");
+            let baseDateStr = "";
+
+            if (fieldKey === "date") {
+              baseDateStr = new Date().toISOString().split('T')[0];
+            } else if (currentFormData && currentFormData[fieldKey]) {
+              baseDateStr = String(currentFormData[fieldKey]);
+            }
+
+            if (baseDateStr) {
+              const baseDate = new Date(baseDateStr);
+              if (!isNaN(baseDate.getTime())) {
+                const targetDate = new Date(baseDate);
+                targetDate.setDate(baseDate.getDate() + offset);
+                qVal = targetDate.toISOString().split('T')[0];
+              }
+            }
           }
         }
         
