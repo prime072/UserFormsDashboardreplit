@@ -577,12 +577,24 @@ export default function OutputSettings({
                                           value={fields.some(f => f.label === cell.lookupConfig?.queryValue) ? cell.lookupConfig?.queryValue : (cell.lookupConfig?.queryValue ? "custom" : "")}
                                           onChange={(e) => {
                                             const val = e.target.value;
-                                            updateCell(rIndex, cIndex, { 
-                                              lookupConfig: { 
-                                                ...cell.lookupConfig!, 
-                                                queryValue: val === "custom" ? "" : val 
-                                              } 
-                                            });
+                                            if (val === "custom") {
+                                              // Don't clear it if it already has a custom value (like {{date}}-1)
+                                              if (fields.some(f => f.label === cell.lookupConfig?.queryValue)) {
+                                                updateCell(rIndex, cIndex, { 
+                                                  lookupConfig: { 
+                                                    ...cell.lookupConfig!, 
+                                                    queryValue: "" 
+                                                  } 
+                                                });
+                                              }
+                                            } else {
+                                              updateCell(rIndex, cIndex, { 
+                                                lookupConfig: { 
+                                                  ...cell.lookupConfig!, 
+                                                  queryValue: val 
+                                                } 
+                                              });
+                                            }
                                           }}
                                           className="h-7 text-xs flex-1 rounded border"
                                         >
