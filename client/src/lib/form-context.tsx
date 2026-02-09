@@ -436,14 +436,16 @@ export function FormProvider({ children }: { children: ReactNode }) {
         
         // Support relative date offsets like {{date}}-1 or {{Field}}-1
         if (qVal.includes("{{")) {
-          const match = qVal.match(/\{\{([^}]+)\}\}([+-]\d+)?/);
+          const match = qVal.match(/\{\{([^}]+)\}\}([+-]?\d+)?/);
           if (match) {
             const fieldKey = match[1];
             const offset = parseInt(match[2] || "0");
             let baseDateStr = "";
 
             if (fieldKey === "date") {
-              baseDateStr = new Date().toISOString().split('T')[0];
+              // Use user's local date for "today"
+              const now = new Date();
+              baseDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             } else if (currentFormData && currentFormData[fieldKey]) {
               baseDateStr = String(currentFormData[fieldKey]);
             }
@@ -453,7 +455,8 @@ export function FormProvider({ children }: { children: ReactNode }) {
               if (!isNaN(baseDate.getTime())) {
                 const targetDate = new Date(baseDate);
                 targetDate.setDate(baseDate.getDate() + offset);
-                qVal = targetDate.toISOString().split('T')[0];
+                // Format as YYYY-MM-DD to match database storage format
+                qVal = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
               }
             }
           }
