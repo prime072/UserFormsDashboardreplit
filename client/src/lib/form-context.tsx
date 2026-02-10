@@ -436,16 +436,22 @@ export function FormProvider({ children }: { children: ReactNode }) {
         
         // Support relative date offsets like {{date}}-1 or {{Field}}-1
         if (qVal.includes("{{")) {
-          const match = qVal.match(/\{\{([^}]+)\}\}([+-]?\d+)?/);
+          const match = qVal.match(/\{\{([^}]+)\}\}([+-]\d+)?/);
           if (match) {
             const fieldKey = match[1];
             const offset = parseInt(match[2] || "0");
             let baseDateStr = "";
 
-            if (fieldKey === "date") {
-              // Use user's local date for "today"
-              const now = new Date();
-              baseDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            if (fieldKey.toLowerCase() === "date") {
+              // Priority 1: Use the value of a field named "Date" (case-insensitive) if it exists in current data
+              const dateFieldKey = Object.keys(currentFormData || {}).find(k => k.toLowerCase() === "date");
+              if (dateFieldKey && currentFormData && currentFormData[dateFieldKey]) {
+                baseDateStr = String(currentFormData[dateFieldKey]);
+              } else {
+                // Fallback: Use current real-world date
+                const now = new Date();
+                baseDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+              }
             } else if (currentFormData && currentFormData[fieldKey]) {
               baseDateStr = String(currentFormData[fieldKey]);
             }
