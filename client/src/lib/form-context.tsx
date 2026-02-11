@@ -160,14 +160,18 @@ type FormContextType = {
   updateResponse: (responseId: string, data: Record<string, any>) => void;
   deleteResponse: (responseId: string) => void;
   fetchFormResponses: (formId: string) => Promise<void>;
-  resolveLookup: (lookupConfig: {
-    formId: string;
-    fieldId: string;
-    lookupType: "first" | "last" | "nth" | "query";
-    nthIndex?: number;
-    queryField?: string;
-    queryValue?: string;
-  }) => Promise<string>;
+  resolveLookup: (
+    lookupConfig: {
+      formId: string;
+      fieldId: string;
+      lookupType: "first" | "last" | "nth" | "query";
+      nthIndex?: number;
+      queryField?: string;
+      queryValue?: string;
+    },
+    currentFormData?: Record<string, any>,
+    cellValues?: Record<string, string>,
+  ) => Promise<string>;
 };
 
 const FormContext = createContext<FormContextType | null>(null);
@@ -402,14 +406,18 @@ export function FormProvider({ children }: { children: ReactNode }) {
     setForms(updatedForms);
   };
 
-  const resolveLookup = async (lookupConfig: {
-    formId: string;
-    fieldId: string;
-    lookupType: "first" | "last" | "nth" | "query";
-    nthIndex?: number;
-    queryField?: string;
-    queryValue?: string;
-  }, currentFormData?: Record<string, any>) => {
+  const resolveLookup = async (
+    lookupConfig: {
+      formId: string;
+      fieldId: string;
+      lookupType: "first" | "last" | "nth" | "query";
+      nthIndex?: number;
+      queryField?: string;
+      queryValue?: string;
+    },
+    currentFormData?: Record<string, any>,
+    cellValues?: Record<string, string>,
+  ) => {
     try {
       const response = await fetch(`/api/forms/${lookupConfig.formId}/data`, {
         headers: { "x-user-id": user?.id || "" },
@@ -430,10 +438,24 @@ export function FormProvider({ children }: { children: ReactNode }) {
         targetResponse = data[data.length - index];
       } else if (lookupConfig.lookupType === "query" && lookupConfig.queryField) {
         let qVal = lookupConfig.queryValue || "";
+
+        // Support [[CellID]] substitution
+        if (qVal.includes("[[") && cellValues) {
+          const cellMatches = qVal.match(/\[\[([^\]]+)\]\]/g);
+          if (cellMatches) {
+            for (const match of cellMatches) {
+              const cellId = match.slice(2, -2);
+              if (cellValues[cellId] !== undefined) {
+                qVal = qVal.replace(match, cellValues[cellId]);
+              }
+            }
+          }
+        }
+
         if (currentFormData && currentFormData[qVal] !== undefined) {
           qVal = String(currentFormData[qVal]);
         }
-        
+
         // Support relative date offsets like {{date}}-1 or {{Field}}-1
         if (qVal.includes("{{")) {
           const match = qVal.match(/\{\{([^}]+)\}\}([+-]\d+)?/);
@@ -444,13 +466,19 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
             if (fieldKey.toLowerCase() === "date") {
               // Priority 1: Use the value of a field named "Date" (case-insensitive) if it exists in current data
-              const dateFieldKey = Object.keys(currentFormData || {}).find(k => k.toLowerCase() === "date");
-              if (dateFieldKey && currentFormData && currentFormData[dateFieldKey]) {
+              const dateFieldKey = Object.keys(currentFormData || {}).find(
+                (k) => k.toLowerCase() === "date",
+              );
+              if (
+                dateFieldKey &&
+                currentFormData &&
+                currentFormData[dateFieldKey]
+              ) {
                 baseDateStr = String(currentFormData[dateFieldKey]);
               } else {
                 // Fallback: Use current real-world date
                 const now = new Date();
-                baseDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                baseDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
               }
             } else if (currentFormData && currentFormData[fieldKey]) {
               baseDateStr = String(currentFormData[fieldKey]);
@@ -462,7 +490,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
                 const targetDate = new Date(baseDate);
                 targetDate.setDate(baseDate.getDate() + offset);
                 // Standardize target date format
-                qVal = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+                qVal = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}-${String(targetDate.getDate()).padStart(2, "0")}`;
               }
             }
           }
@@ -472,21 +500,24 @@ export function FormProvider({ children }: { children: ReactNode }) {
         const normalizeDateValue = (val: any) => {
           if (!val) return "";
           // If it's already YYYY-MM-DD, return it
-          if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+          if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val))
+            return val;
           const d = new Date(val);
           if (isNaN(d.getTime())) return String(val).toLowerCase().trim();
-          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         };
 
         const normalizedQVal = normalizeDateValue(qVal);
-        
+
         targetResponse = data.find((r: any) => {
           const dbValue = r.data[lookupConfig.queryField!];
           return normalizeDateValue(dbValue) === normalizedQVal;
         });
       }
 
-      return targetResponse ? String(targetResponse.data[lookupConfig.fieldId] || "Not Found") : "Not Found";
+      return targetResponse
+        ? String(targetResponse.data[lookupConfig.fieldId] || "Not Found")
+        : "Not Found";
     } catch (error) {
       console.error("Lookup resolution error:", error);
       return "Error";
