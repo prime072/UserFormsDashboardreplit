@@ -576,46 +576,59 @@ export async function generateDocx(
         new Paragraph({ text: gridConfig.textAbove, spacing: { after: 200 } }),
       );
     }
-    const bodyRows = await Promise.all(gridConfig.rows.map(
-      async (row) =>
-        new TableRow({
-          children: await Promise.all(row.cells.map(async (cell) => {
-            let value = cell.value;
-            if (cell.type === "variable") {
-              value = String(responseData[cell.value] || "");
-            } else if (cell.type === "lookup" || cell.type === "formula") {
-              if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
-                value = resolvedPreFetched[cell.id];
-              } else if (cell.type === "lookup" && cell.lookupConfig && resolveLookup) {
-                value = await resolveLookup(cell.lookupConfig);
-              } else {
-                value = "0";
-              }
-            }
-            return new TableCell({
-              children: [
-                new Paragraph({
+    const bodyRows = await Promise.all(
+      gridConfig.rows.map(
+        async (row) =>
+          new TableRow({
+            children: await Promise.all(
+              row.cells.map(async (cell) => {
+                let value = cell.value;
+                if (cell.type === "variable") {
+                  value = String(responseData[cell.value] || "");
+                } else if (
+                  cell.type === "lookup" ||
+                  cell.type === "formula" ||
+                  cell.type === "date_calc" ||
+                  cell.type === "hmr_calc"
+                ) {
+                  if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
+                    value = resolvedPreFetched[cell.id];
+                  } else if (
+                    cell.type === "lookup" &&
+                    cell.lookupConfig &&
+                    resolveLookup
+                  ) {
+                    value = await resolveLookup(cell.lookupConfig);
+                  } else {
+                    value = "0";
+                  }
+                }
+                return new TableCell({
                   children: [
-                    new TextRun({
-                      text: value,
-                      bold: cell.bold,
-                      italics: cell.italic,
-                      size: (cell.fontSize || 12) * 2,
-                      color: cell.textColor
-                        ? cell.textColor.replace("#", "")
-                        : undefined,
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: value,
+                          bold: cell.bold,
+                          italics: cell.italic,
+                          size: (cell.fontSize || 12) * 2,
+                          color: cell.textColor
+                            ? cell.textColor.replace("#", "")
+                            : undefined,
+                        }),
+                      ],
                     }),
                   ],
-                }),
-              ],
-              shading: cell.color
-                ? { fill: cell.color.replace("#", "") }
-                : undefined,
-              columnSpan: cell.colspan || 1,
-            });
-          })),
-        }),
-    ));
+                  shading: cell.color
+                    ? { fill: cell.color.replace("#", "") }
+                    : undefined,
+                  columnSpan: cell.colspan || 1,
+                });
+              }),
+            ),
+          }),
+      ),
+    );
     const rows = [];
     if (gridConfig.tableName) {
       rows.push(
@@ -783,7 +796,7 @@ export async function generatePdf(
       doc.setTextColor(gridConfig.headerTextColor || "#000000");
       gridConfig.headers.forEach((h, i) => {
         doc.setFont("helvetica", "bold");
-        doc.text(h, 22 + i * colWidth, y + 7);
+        doc.text(String(h), 22 + i * colWidth, y + 7);
       });
       y += 10;
     }
@@ -791,29 +804,41 @@ export async function generatePdf(
 
     for (const row of gridConfig.rows) {
       let maxHeight = 10;
-      const cellValues = await Promise.all(row.cells.map(async (cell) => {
-        let val = cell.value;
-        if (cell.type === "variable") {
-          val = String(responseData[cell.value] || "");
-        } else if (cell.type === "lookup" || cell.type === "formula") {
-          if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
-            val = resolvedPreFetched[cell.id];
-          } else if (cell.type === "lookup" && cell.lookupConfig && resolveLookup) {
-            val = await resolveLookup(cell.lookupConfig);
-          } else {
-            val = "0";
+      const cellValues = await Promise.all(
+        row.cells.map(async (cell) => {
+          let val = cell.value;
+          if (cell.type === "variable") {
+            val = String(responseData[cell.value] || "");
+          } else if (
+            cell.type === "lookup" ||
+            cell.type === "formula" ||
+            cell.type === "date_calc" ||
+            cell.type === "hmr_calc"
+          ) {
+            if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
+              val = resolvedPreFetched[cell.id];
+            } else if (
+              cell.type === "lookup" &&
+              cell.lookupConfig &&
+              resolveLookup
+            ) {
+              val = await resolveLookup(cell.lookupConfig);
+            } else {
+              val = "0";
+            }
           }
-        }
-        return val;
-      }));
+          return val;
+        }),
+      );
 
-      cellValues.forEach((val, i) => {
-        const cell = row.cells[i];
-        const split = doc.splitTextToSize(
+      row.cells.forEach((cell, i) => {
+        const val = String(cellValues[i]);
+        const splitVal = doc.splitTextToSize(
           val,
-          colWidth * (cell.colspan || 1) - 4,
+          (cell.colspan || 1) * colWidth - 4,
         );
-        maxHeight = Math.max(maxHeight, split.length * 5 + 5);
+        const cellHeight = splitVal.length * 5 + 5;
+        if (cellHeight > maxHeight) maxHeight = cellHeight;
       });
 
       if (y + maxHeight > 280) {
@@ -821,15 +846,20 @@ export async function generatePdf(
         y = 20;
       }
 
-      let currentX = 20;
+      let x = 20;
       row.cells.forEach((cell, i) => {
-        const cellWidth = colWidth * (cell.colspan || 1);
+        const val = String(cellValues[i]);
+        const cw = (cell.colspan || 1) * colWidth;
+
         if (cell.color) {
           doc.setFillColor(cell.color);
-          doc.rect(currentX, y, cellWidth, maxHeight, "F");
+          doc.rect(x, y, cw, maxHeight, "F");
         }
-        doc.setTextColor(cell.textColor || "#000000");
-        doc.setFontSize(cell.fontSize || 10);
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(x, y, cw, maxHeight, "D");
+
+        if (cell.textColor) doc.setTextColor(cell.textColor);
+        else doc.setTextColor("#475569");
 
         let style = "normal";
         if (cell.bold && cell.italic) style = "bolditalic";
@@ -838,41 +868,36 @@ export async function generatePdf(
         else if (row.isFooter) style = "bold";
 
         doc.setFont("helvetica", style);
+        doc.setFontSize(cell.fontSize || 10);
 
-        const val = cellValues[i];
-        doc.text(doc.splitTextToSize(val, cellWidth - 4), currentX + 2, y + 7);
-        currentX += cellWidth;
+        const splitVal = doc.splitTextToSize(val, cw - 4);
+        doc.text(splitVal, x + 2, y + 7);
+        x += cw;
       });
-      doc.setTextColor("#000000");
       y += maxHeight;
     }
 
     if (gridConfig.textBelow) {
+      y += 5;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
+      doc.setTextColor("#475569");
       const splitTextBelow = doc.splitTextToSize(gridConfig.textBelow, 170);
-      doc.text(splitTextBelow, 20, y + 5);
+      doc.text(splitTextBelow, 20, y);
     }
   } else {
     Object.entries(responseData)
       .filter(([key]) => key !== "id" && key !== "submittedAt")
-      .forEach(([key, value]) => {
-        if (y > 270) {
-          doc.addPage();
-          y = 20;
-        }
-        doc.setFontSize(11);
+      .forEach(([key, val]) => {
+        doc.setFont("helvetica", "bold");
         doc.text(`${key}:`, 20, y);
-        doc.setFontSize(10);
-        const wrapped = doc.splitTextToSize(String(value || ""), 130);
-        doc.text(wrapped, 60, y);
-        y += wrapped.length * 5 + 5;
+        doc.setFont("helvetica", "normal");
+        doc.text(String(val), 60, y);
+        y += 10;
       });
   }
 
-  doc.save(
-    `${formTitle}-response-${new Date().toISOString().split("T")[0]}.pdf`,
-  );
+  doc.save(`${formTitle}-response-${new Date().toISOString().split("T")[0]}.pdf`);
 }
 
 export async function generateWhatsAppShareMessage(
@@ -889,6 +914,20 @@ export async function generateWhatsAppShareMessage(
     Object.entries(responseData).forEach(([key, value]) => {
       message = message.replace(new RegExp(`{{${key}}}`, "g"), String(value));
     });
+
+    // Support [[CellID]] substitution in custom format
+    if (message.includes("[[") && resolvedPreFetched) {
+      const cellMatches = message.match(/\[\[([^\]]+)\]\]/g);
+      if (cellMatches) {
+        for (const match of cellMatches) {
+          const cellId = match.slice(2, -2);
+          if (resolvedPreFetched[cellId] !== undefined) {
+            message = message.replace(match, resolvedPreFetched[cellId]);
+          }
+        }
+      }
+    }
+
     message = message.replace(/{{form_url}}/g, formUrl);
     message = message.replace(/{{form_title}}/g, formTitle);
     return message;
@@ -896,24 +935,37 @@ export async function generateWhatsAppShareMessage(
 
   let summary = "";
   if (gridConfig && gridConfig.rows.length > 0) {
-    const rowStrings = await Promise.all(gridConfig.rows.map(async (row) => {
-      const cellStrings = await Promise.all(row.cells.map(async (cell) => {
-        let val = cell.value;
-        if (cell.type === "variable") {
-          val = String(responseData[cell.value] || "");
-        } else if (cell.type === "lookup" || cell.type === "formula") {
-          if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
-            val = resolvedPreFetched[cell.id];
-          } else if (cell.type === "lookup" && cell.lookupConfig && resolveLookup) {
-            val = await resolveLookup(cell.lookupConfig);
-          } else {
-            val = "0";
-          }
-        }
-        return val;
-      }));
-      return cellStrings.join(" : ");
-    }));
+    const rowStrings = await Promise.all(
+      gridConfig.rows.map(async (row) => {
+        const cellStrings = await Promise.all(
+          row.cells.map(async (cell) => {
+            let val = cell.value;
+            if (cell.type === "variable") {
+              val = String(responseData[cell.value] || "");
+            } else if (
+              cell.type === "lookup" ||
+              cell.type === "formula" ||
+              cell.type === "date_calc" ||
+              cell.type === "hmr_calc"
+            ) {
+              if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
+                val = resolvedPreFetched[cell.id];
+              } else if (
+                cell.type === "lookup" &&
+                cell.lookupConfig &&
+                resolveLookup
+              ) {
+                val = await resolveLookup(cell.lookupConfig);
+              } else {
+                val = "0";
+              }
+            }
+            return val;
+          }),
+        );
+        return cellStrings.join(" : ");
+      }),
+    );
     summary = rowStrings.join("\n");
   } else {
     summary = Object.entries(responseData)
