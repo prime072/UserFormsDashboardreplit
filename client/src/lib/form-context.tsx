@@ -461,17 +461,29 @@ export function FormProvider({ children }: { children: ReactNode }) {
               if (!isNaN(baseDate.getTime())) {
                 const targetDate = new Date(baseDate);
                 targetDate.setDate(baseDate.getDate() + offset);
-                // Format as YYYY-MM-DD to match database storage format
+                // Standardize target date format
                 qVal = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
               }
             }
           }
         }
+
+        // Robust date normalization helper for matching
+        const normalizeDateValue = (val: any) => {
+          if (!val) return "";
+          // If it's already YYYY-MM-DD, return it
+          if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+          const d = new Date(val);
+          if (isNaN(d.getTime())) return String(val).toLowerCase().trim();
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
+        const normalizedQVal = normalizeDateValue(qVal);
         
-        targetResponse = data.find((r: any) => 
-          String(r.data[lookupConfig.queryField!] || "").toLowerCase() === 
-          qVal.toLowerCase()
-        );
+        targetResponse = data.find((r: any) => {
+          const dbValue = r.data[lookupConfig.queryField!];
+          return normalizeDateValue(dbValue) === normalizedQVal;
+        });
       }
 
       return targetResponse ? String(targetResponse.data[lookupConfig.fieldId] || "Not Found") : "Not Found";
