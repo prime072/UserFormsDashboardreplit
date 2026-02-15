@@ -54,7 +54,14 @@ export interface FormField {
 
 export interface FormTableCell {
   id: string;
-  type: "text" | "variable" | "lookup" | "formula" | "hmr_calc" | "date_calc" | "link_button";
+  type:
+    | "text"
+    | "variable"
+    | "lookup"
+    | "formula"
+    | "hmr_calc"
+    | "date_calc"
+    | "link_button";
   value: string;
   calcConfig?: {
     field1: string; // Label of field 1 OR [[CellID]]
@@ -62,8 +69,22 @@ export interface FormTableCell {
     operator: "+" | "-";
     value?: string; // Constant value (e.g. "1" day)
     unit?: "days" | "hours" | "minutes";
-    lookup1?: { formId: string; fieldId: string; lookupType: string; nthIndex?: number; queryField?: string; queryValue?: string };
-    lookup2?: { formId: string; fieldId: string; lookupType: string; nthIndex?: number; queryField?: string; queryValue?: string };
+    lookup1?: {
+      formId: string;
+      fieldId: string;
+      lookupType: string;
+      nthIndex?: number;
+      queryField?: string;
+      queryValue?: string;
+    };
+    lookup2?: {
+      formId: string;
+      fieldId: string;
+      lookupType: string;
+      nthIndex?: number;
+      queryField?: string;
+      queryValue?: string;
+    };
   };
   formulaConfig?: {
     expression: string;
@@ -443,7 +464,10 @@ export function FormProvider({ children }: { children: ReactNode }) {
       } else if (lookupConfig.lookupType === "nth") {
         const index = lookupConfig.nthIndex || 1;
         targetResponse = data[data.length - index];
-      } else if (lookupConfig.lookupType === "query" && lookupConfig.queryField) {
+      } else if (
+        lookupConfig.lookupType === "query" &&
+        lookupConfig.queryField
+      ) {
         let qVal = lookupConfig.queryValue || "";
 
         // Support [[CellID]] substitution
@@ -610,11 +634,12 @@ export async function generateDocx(
                   const rawVal = responseData[cell.value];
                   if (Array.isArray(rawVal)) {
                     value = rawVal
-                      .map((item: any) =>
-                        Object.entries(item)
+                      .map((item: any, idx: number) => {
+                        const kv = Object.entries(item)
                           .map(([k, v]) => `${k}: ${v}`)
-                          .join(", "),
-                      )
+                          .join(", ");
+                        return `${idx + 1}. ${kv}`;
+                      })
                       .join("\n");
                   } else {
                     value = String(rawVal || "");
@@ -637,26 +662,27 @@ export async function generateDocx(
                     value = "0";
                   }
                 }
-                
+
                 // For Word documents, we need to handle newlines by creating multiple text runs or paragraphs
                 // For simplicity here, we split by newline and add them
-                const textLines = String(value).split('\n');
+                const textLines = String(value).split("\n");
 
                 return new TableCell({
-                  children: textLines.map(line => 
-                    new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: line,
-                          bold: cell.bold,
-                          italics: cell.italic,
-                          size: (cell.fontSize || 12) * 2,
-                          color: cell.textColor
-                            ? cell.textColor.replace("#", "")
-                            : undefined,
-                        }),
-                      ],
-                    })
+                  children: textLines.map(
+                    (line) =>
+                      new Paragraph({
+                        children: [
+                          new TextRun({
+                            text: line,
+                            bold: cell.bold,
+                            italics: cell.italic,
+                            size: (cell.fontSize || 12) * 2,
+                            color: cell.textColor
+                              ? cell.textColor.replace("#", "")
+                              : undefined,
+                          }),
+                        ],
+                      }),
                   ),
                   shading: cell.color
                     ? { fill: cell.color.replace("#", "") }
@@ -947,7 +973,9 @@ export async function generatePdf(
       });
   }
 
-  doc.save(`${formTitle}-response-${new Date().toISOString().split("T")[0]}.pdf`);
+  doc.save(
+    `${formTitle}-response-${new Date().toISOString().split("T")[0]}.pdf`,
+  );
 }
 
 export async function generateWhatsAppShareMessage(
@@ -975,7 +1003,10 @@ export async function generateWhatsAppShareMessage(
   if (customFormat) {
     let message = customFormat;
     Object.entries(responseData).forEach(([key, value]) => {
-      message = message.replace(new RegExp(`{{${key}}}`, "g"), formatRepeaterValue(value));
+      message = message.replace(
+        new RegExp(`{{${key}}}`, "g"),
+        formatRepeaterValue(value),
+      );
     });
 
     // Support [[CellID]] substitution in custom format
