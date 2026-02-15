@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Lock } from "lucide-react";
+import { Loader2, Send, Lock, Plus, Trash2 } from "lucide-react";
 
 export default function PublicForm() {
   const [match, params] = useRoute("/s/:id");
@@ -275,6 +275,116 @@ export default function PublicForm() {
                       }} 
                     />
                     <p className="text-xs text-slate-500">Max file size: 5MB</p>
+                  </div>
+                )}
+                {field.type === "repeater" && (
+                  <div className="space-y-4 border rounded-lg p-4 bg-slate-50/50">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            {field.repeaterFields?.map((sf: any) => (
+                              <th key={sf.id} className="text-left py-2 px-2 font-semibold text-slate-600">
+                                {sf.label}
+                              </th>
+                            ))}
+                            <th className="w-10"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(formData[field.label] || [{} ]).map((row: any, rowIndex: number) => (
+                            <tr key={rowIndex} className="border-b last:border-0">
+                              {field.repeaterFields?.map((sf: any) => (
+                                <td key={sf.id} className="py-2 px-1">
+                                  {sf.type === "text" && (
+                                    <Input
+                                      value={row[sf.label] || ""}
+                                      onChange={(e) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                      className="h-8 text-xs bg-white"
+                                    />
+                                  )}
+                                  {sf.type === "number" && (
+                                    <Input
+                                      type="number"
+                                      value={row[sf.label] || ""}
+                                      onChange={(e) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                      className="h-8 text-xs bg-white"
+                                    />
+                                  )}
+                                  {sf.type === "date" && (
+                                    <Input
+                                      type="date"
+                                      value={row[sf.label] || ""}
+                                      onChange={(e) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                      className="h-8 text-xs bg-white"
+                                    />
+                                  )}
+                                  {sf.type === "select" && (
+                                    <Select
+                                      value={row[sf.label] || ""}
+                                      onValueChange={(v) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: v };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-8 text-xs bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {sf.options?.map((opt: string) => (
+                                          <SelectItem key={opt} value={opt}>
+                                            {opt}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                </td>
+                              ))}
+                              <td className="py-2 px-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-500"
+                                  onClick={() => {
+                                    const newRows = formData[field.label].filter((_: any, i: number) => i !== rowIndex);
+                                    setData({ ...formData, [field.label]: newRows.length ? newRows : [{}] });
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full bg-white border-dashed"
+                      onClick={() => {
+                        const newRows = [...(formData[field.label] || []), {}];
+                        setData({ ...formData, [field.label]: newRows });
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Add Item
+                    </Button>
                   </div>
                 )}
               </div>

@@ -301,7 +301,23 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                           {row.cells.map((cell: any) => {
                             let val = cell.value;
                             if (cell.type === "variable") {
-                              val = String(data[cell.value] || "");
+                              const rawVal = data[cell.value];
+                              if (Array.isArray(rawVal)) {
+                                // Handle Repeater Data in table display
+                                val = (
+                                  <div className="space-y-1">
+                                    {rawVal.map((item: any, idx: number) => (
+                                      <div key={idx} className="text-xs border-b last:border-0 pb-1 mb-1">
+                                        {Object.entries(item).map(([k, v]) => (
+                                          <div key={k}><span className="font-semibold">{k}:</span> {String(v)}</div>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              } else {
+                                val = String(rawVal || "");
+                              }
                             } else if (cell.type === "lookup" || cell.type === "formula" || cell.type === "date_calc" || cell.type === "hmr_calc") {
                               val = resolvedLookups[cell.id] || "Loading...";
                             }

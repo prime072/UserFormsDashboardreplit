@@ -226,9 +226,79 @@ export default function FormBuilder() {
                           <SelectItem value="link_button">Link Button</SelectItem>
                           <SelectItem value="date">Date</SelectItem>
                           <SelectItem value="hmr">HMR (Hour:Minute)</SelectItem>
+                          <SelectItem value="repeater">Repeater (List of Items)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    {field.type === "repeater" && (
+                      <div className="space-y-4 bg-slate-50 p-4 rounded-md border border-slate-200">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          Repeater Columns
+                        </Label>
+                        <div className="space-y-3">
+                          {(field.repeaterFields || []).map((subField, idx) => (
+                            <div key={subField.id} className="flex gap-2 items-start">
+                              <Input
+                                value={subField.label}
+                                onChange={(e) => {
+                                  const newRepeaterFields = [...(field.repeaterFields || [])];
+                                  newRepeaterFields[idx].label = e.target.value;
+                                  updateField(field.id, { repeaterFields: newRepeaterFields });
+                                }}
+                                placeholder="Column Label"
+                                className="flex-1 bg-white"
+                              />
+                              <Select
+                                value={subField.type}
+                                onValueChange={(v: any) => {
+                                  const newRepeaterFields = [...(field.repeaterFields || [])];
+                                  newRepeaterFields[idx].type = v;
+                                  updateField(field.id, { repeaterFields: newRepeaterFields });
+                                }}
+                              >
+                                <SelectTrigger className="w-[120px] bg-white">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="text">Text</SelectItem>
+                                  <SelectItem value="number">Number</SelectItem>
+                                  <SelectItem value="date">Date</SelectItem>
+                                  <SelectItem value="select">Dropdown</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  const newRepeaterFields = field.repeaterFields?.filter((_, i) => i !== idx);
+                                  updateField(field.id, { repeaterFields: newRepeaterFields });
+                                }}
+                                className="text-red-500"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-white"
+                            onClick={() => {
+                              const newSubField = {
+                                id: Math.random().toString(36).substr(2, 9),
+                                type: "text" as const,
+                                label: "New Column",
+                              };
+                              updateField(field.id, {
+                                repeaterFields: [...(field.repeaterFields || []), newSubField],
+                              });
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" /> Add Column
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     {field.type === 'link_button' && (
                       <div className="space-y-3 bg-slate-50 p-4 rounded-md">
                         <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Button Configuration</Label>
