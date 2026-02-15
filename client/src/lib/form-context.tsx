@@ -638,7 +638,7 @@ export async function generateDocx(
                         const kv = Object.entries(item)
                           .map(([k, v]) => `${k}: ${v}`)
                           .join(", ");
-                        return `${idx + 1}. ${kv}`;
+                        return `${idx + 1}. ${kv}.`</tr>`;
                       })
                       .join("\n");
                   } else {
