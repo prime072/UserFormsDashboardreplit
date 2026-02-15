@@ -229,7 +229,17 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
   const replaceVars = (text: string) => {
     let result = text || "";
     Object.entries(data).forEach(([key, val]) => {
-      result = result.replace(new RegExp(`{{${key}}}`, "g"), String(val));
+      let displayVal = String(val || "");
+      if (Array.isArray(val)) {
+        displayVal = val
+          .map((item: any) =>
+            Object.entries(item)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", "),
+          )
+          .join("\n");
+      }
+      result = result.replace(new RegExp(`{{${key}}}`, "g"), displayVal);
     });
     return result;
   };
@@ -354,7 +364,21 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                         className="flex justify-between border-b pb-2"
                       >
                         <span className="font-medium">{key}:</span>
-                        <span>{String(val)}</span>
+                        <span>
+                          {Array.isArray(val) ? (
+                            <div className="text-right space-y-1">
+                              {val.map((item: any, idx: number) => (
+                                <div key={idx} className="text-xs text-slate-500">
+                                  {Object.entries(item)
+                                    .map(([k, v]) => `${k}: ${v}`)
+                                    .join(", ")}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            String(val)
+                          )}
+                        </span>
                       </div>
                     ))}
                   </div>

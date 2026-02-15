@@ -560,7 +560,23 @@ export function useForms() {
 }
 
 export async function generateExcel(formTitle: string, responseData: any) {
-  const worksheet = XLSX.utils.json_to_sheet([responseData]);
+  // Flatten response data for Excel, handling repeater fields
+  const flattenedData: Record<string, any> = {};
+  Object.entries(responseData).forEach(([key, val]) => {
+    if (Array.isArray(val)) {
+      flattenedData[key] = val
+        .map((item: any) =>
+          Object.entries(item)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(", "),
+        )
+        .join(" | ");
+    } else {
+      flattenedData[key] = val;
+    }
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet([flattenedData]);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Response");
   const filename = `${formTitle}-response-${new Date().toISOString().split("T")[0]}.xlsx`;
@@ -591,7 +607,18 @@ export async function generateDocx(
               row.cells.map(async (cell) => {
                 let value = cell.value;
                 if (cell.type === "variable") {
-                  value = String(responseData[cell.value] || "");
+                  const rawVal = responseData[cell.value];
+                  if (Array.isArray(rawVal)) {
+                    value = rawVal
+                      .map((item: any) =>
+                        Object.entries(item)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(", "),
+                      )
+                      .join("\n");
+                  } else {
+                    value = String(rawVal || "");
+                  }
                 } else if (
                   cell.type === "lookup" ||
                   cell.type === "formula" ||
@@ -610,12 +637,17 @@ export async function generateDocx(
                     value = "0";
                   }
                 }
+                
+                // For Word documents, we need to handle newlines by creating multiple text runs or paragraphs
+                // For simplicity here, we split by newline and add them
+                const textLines = String(value).split('\n');
+
                 return new TableCell({
-                  children: [
+                  children: textLines.map(line => 
                     new Paragraph({
                       children: [
                         new TextRun({
-                          text: value,
+                          text: line,
                           bold: cell.bold,
                           italics: cell.italic,
                           size: (cell.fontSize || 12) * 2,
@@ -624,8 +656,8 @@ export async function generateDocx(
                             : undefined,
                         }),
                       ],
-                    }),
-                  ],
+                    })
+                  ),
                   shading: cell.color
                     ? { fill: cell.color.replace("#", "") }
                     : undefined,
@@ -815,7 +847,18 @@ export async function generatePdf(
         row.cells.map(async (cell) => {
           let val = cell.value;
           if (cell.type === "variable") {
-            val = String(responseData[cell.value] || "");
+            const rawVal = responseData[cell.value];
+            if (Array.isArray(rawVal)) {
+              val = rawVal
+                .map((item: any) =>
+                  Object.entries(item)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(", "),
+                )
+                .join("\n");
+            } else {
+              val = String(rawVal || "");
+            }
           } else if (
             cell.type === "lookup" ||
             cell.type === "formula" ||
@@ -916,10 +959,23 @@ export async function generateWhatsAppShareMessage(
   resolveLookup?: (config: any) => Promise<string>,
   resolvedPreFetched?: Record<string, string>,
 ): Promise<string> {
+  const formatRepeaterValue = (val: any) => {
+    if (Array.isArray(val)) {
+      return val
+        .map((item: any) =>
+          Object.entries(item)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(", "),
+        )
+        .join("\n");
+    }
+    return String(val || "");
+  };
+
   if (customFormat) {
     let message = customFormat;
     Object.entries(responseData).forEach(([key, value]) => {
-      message = message.replace(new RegExp(`{{${key}}}`, "g"), String(value));
+      message = message.replace(new RegExp(`{{${key}}}`, "g"), formatRepeaterValue(value));
     });
 
     // Support [[CellID]] substitution in custom format
@@ -948,7 +1004,7 @@ export async function generateWhatsAppShareMessage(
           row.cells.map(async (cell) => {
             let val = cell.value;
             if (cell.type === "variable") {
-              val = String(responseData[cell.value] || "");
+              val = formatRepeaterValue(responseData[cell.value]);
             } else if (
               cell.type === "lookup" ||
               cell.type === "formula" ||
@@ -977,7 +1033,7 @@ export async function generateWhatsAppShareMessage(
   } else {
     summary = Object.entries(responseData)
       .filter(([key]) => key !== "id" && key !== "submittedAt")
-      .map(([key, value]) => `${key}: ${value}`)
+      .map(([key, value]) => `${key}: ${formatRepeaterValue(value)}`)
       .join("\n");
   }
 
