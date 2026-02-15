@@ -33,7 +33,8 @@ export type FieldType =
   | "date"
   | "hmr"
   | "file"
-  | "link_button";
+  | "link_button"
+  | "repeater";
 export type OutputFormat = "thank_you" | "whatsapp" | "excel" | "docx" | "pdf";
 
 export interface FormField {
@@ -43,6 +44,12 @@ export interface FormField {
   placeholder?: string;
   required: boolean;
   options?: string[];
+  repeaterFields?: {
+    id: string;
+    type: "text" | "number" | "date" | "select";
+    label: string;
+    options?: string[];
+  }[];
 }
 
 export interface FormTableCell {
