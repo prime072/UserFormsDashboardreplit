@@ -46,7 +46,16 @@ export interface FormField {
   options?: string[];
   repeaterFields?: {
     id: string;
-    type: "text" | "number" | "date" | "select";
+    type:
+      | "text"
+      | "number"
+      | "date"
+      | "select"
+      | "radio"
+      | "checkbox"
+      | "textarea"
+      | "email"
+      | "hmr";
     label: string;
     options?: string[];
   }[];

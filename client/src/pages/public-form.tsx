@@ -296,6 +296,98 @@ export default function PublicForm() {
                             <tr key={rowIndex} className="border-b last:border-0">
                               {field.repeaterFields?.map((sf: any) => (
                                 <td key={sf.id} className="py-2 px-1">
+                                  {sf.type === "textarea" && (
+                                    <Textarea
+                                      value={row[sf.label] || ""}
+                                      onChange={(e) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                      className="min-h-[60px] text-xs bg-white"
+                                    />
+                                  )}
+                                  {sf.type === "email" && (
+                                    <Input
+                                      type="email"
+                                      value={row[sf.label] || ""}
+                                      onChange={(e) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                      className="h-8 text-xs bg-white"
+                                    />
+                                  )}
+                                  {sf.type === "radio" && (
+                                    <RadioGroup
+                                      value={row[sf.label] || ""}
+                                      onValueChange={(v) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: v };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                      className="flex flex-col gap-1"
+                                    >
+                                      {sf.options?.map((opt: string) => (
+                                        <div key={opt} className="flex items-center gap-1">
+                                          <RadioGroupItem value={opt} id={`r-${rowIndex}-${sf.id}-${opt}`} className="w-3 h-3" />
+                                          <Label htmlFor={`r-${rowIndex}-${sf.id}-${opt}`} className="text-[10px]">{opt}</Label>
+                                        </div>
+                                      ))}
+                                    </RadioGroup>
+                                  )}
+                                  {sf.type === "checkbox" && (
+                                    <div className="flex flex-col gap-1">
+                                      {sf.options && sf.options.length > 0 ? (
+                                        sf.options.map((option: string) => (
+                                          <div key={option} className="flex items-center gap-1">
+                                            <Checkbox
+                                              id={`c-${rowIndex}-${sf.id}-${option}`}
+                                              checked={Array.isArray(row[sf.label]) ? row[sf.label].includes(option) : false}
+                                              onCheckedChange={(v) => {
+                                                const newRows = [...(formData[field.label] || [{}])];
+                                                const currentValues = Array.isArray(newRows[rowIndex][sf.label]) ? [...newRows[rowIndex][sf.label]] : [];
+                                                if (v) {
+                                                  if (!currentValues.includes(option)) currentValues.push(option);
+                                                } else {
+                                                  const index = currentValues.indexOf(option);
+                                                  if (index > -1) currentValues.splice(index, 1);
+                                                }
+                                                newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: currentValues };
+                                                setData({ ...formData, [field.label]: newRows });
+                                              }}
+                                              className="w-3 h-3"
+                                            />
+                                            <Label htmlFor={`c-${rowIndex}-${sf.id}-${option}`} className="text-[10px]">{option}</Label>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <Checkbox
+                                          checked={!!row[sf.label]}
+                                          onCheckedChange={(v) => {
+                                            const newRows = [...(formData[field.label] || [{}])];
+                                            newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: !!v };
+                                            setData({ ...formData, [field.label]: newRows });
+                                          }}
+                                          className="w-3 h-3"
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+                                  {sf.type === "hmr" && (
+                                    <Input
+                                      placeholder="0000:00"
+                                      pattern="^\d+:[0-5]\d$"
+                                      value={row[sf.label] || ""}
+                                      onChange={(e) => {
+                                        const newRows = [...(formData[field.label] || [{}])];
+                                        newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
+                                        setData({ ...formData, [field.label]: newRows });
+                                      }}
+                                      className="h-8 text-xs bg-white"
+                                    />
+                                  )}
                                   {sf.type === "text" && (
                                     <Input
                                       value={row[sf.label] || ""}

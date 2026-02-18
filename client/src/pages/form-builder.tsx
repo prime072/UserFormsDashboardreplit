@@ -262,10 +262,64 @@ export default function FormBuilder() {
                                 <SelectContent>
                                   <SelectItem value="text">Text</SelectItem>
                                   <SelectItem value="number">Number</SelectItem>
-                                  <SelectItem value="date">Date</SelectItem>
+                                  <SelectItem value="email">Email</SelectItem>
+                                  <SelectItem value="textarea">Long Text</SelectItem>
                                   <SelectItem value="select">Dropdown</SelectItem>
+                                  <SelectItem value="radio">Radio</SelectItem>
+                                  <SelectItem value="checkbox">Checkbox</SelectItem>
+                                  <SelectItem value="date">Date</SelectItem>
+                                  <SelectItem value="hmr">HMR (Hour:Minute)</SelectItem>
                                 </SelectContent>
                               </Select>
+                              {(subField.type === 'select' || subField.type === 'radio' || subField.type === 'checkbox') && (
+                                <div className="flex-1 space-y-2 mt-2 ml-4 border-l-2 pl-4">
+                                  <Label className="text-[10px] font-bold uppercase text-slate-400">Column Options</Label>
+                                  {(subField.options || []).map((opt, oIdx) => (
+                                    <div key={oIdx} className="flex gap-1">
+                                      <Input 
+                                        value={opt} 
+                                        onChange={(e) => {
+                                          const newRepeaterFields = [...(field.repeaterFields || [])];
+                                          const newOptions = [...(newRepeaterFields[idx].options || [])];
+                                          newOptions[oIdx] = e.target.value;
+                                          newRepeaterFields[idx].options = newOptions;
+                                          updateField(field.id, { repeaterFields: newRepeaterFields });
+                                        }}
+                                        className="h-7 text-xs bg-white"
+                                      />
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-7 w-7 text-red-400"
+                                        onClick={() => {
+                                          const newRepeaterFields = [...(field.repeaterFields || [])];
+                                          newRepeaterFields[idx].options = (newRepeaterFields[idx].options || []).filter((_, i) => i !== oIdx);
+                                          updateField(field.id, { repeaterFields: newRepeaterFields });
+                                        }}
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                  <div className="flex gap-1">
+                                    <Input 
+                                      placeholder="Add option..." 
+                                      className="h-7 text-xs bg-white"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          const val = (e.target as HTMLInputElement).value;
+                                          if (!val) return;
+                                          const newRepeaterFields = [...(field.repeaterFields || [])];
+                                          newRepeaterFields[idx].options = [...(newRepeaterFields[idx].options || []), val];
+                                          updateField(field.id, { repeaterFields: newRepeaterFields });
+                                          (e.target as HTMLInputElement).value = '';
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
