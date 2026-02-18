@@ -292,15 +292,16 @@ export default function PublicForm() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(formData[field.label] || [{} ]).map((row: any, rowIndex: number) => (
-                            <tr key={rowIndex} className="border-b last:border-0">
+                          {(formData[field.label] || [{}]).map((row: any, rowIndex: number) => (
+                            <tr key={`${field.id}-row-${rowIndex}`} className="border-b last:border-0">
                               {field.repeaterFields?.map((sf: any) => (
-                                <td key={sf.id} className="py-2 px-1">
+                                <td key={`${field.id}-cell-${rowIndex}-${sf.id}`} className="py-2 px-1">
                                   {sf.type === "textarea" && (
                                     <Textarea
                                       value={row[sf.label] || ""}
                                       onChange={(e) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
@@ -312,7 +313,8 @@ export default function PublicForm() {
                                       type="email"
                                       value={row[sf.label] || ""}
                                       onChange={(e) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
@@ -323,7 +325,8 @@ export default function PublicForm() {
                                     <RadioGroup
                                       value={row[sf.label] || ""}
                                       onValueChange={(v) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: v };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
@@ -331,8 +334,8 @@ export default function PublicForm() {
                                     >
                                       {sf.options?.map((opt: string) => (
                                         <div key={opt} className="flex items-center gap-1">
-                                          <RadioGroupItem value={opt} id={`r-${rowIndex}-${sf.id}-${opt}`} className="w-3 h-3" />
-                                          <Label htmlFor={`r-${rowIndex}-${sf.id}-${opt}`} className="text-[10px]">{opt}</Label>
+                                          <RadioGroupItem value={opt} id={`r-${field.id}-${rowIndex}-${sf.id}-${opt}`} className="w-3 h-3" />
+                                          <Label htmlFor={`r-${field.id}-${rowIndex}-${sf.id}-${opt}`} className="text-[10px]">{opt}</Label>
                                         </div>
                                       ))}
                                     </RadioGroup>
@@ -343,10 +346,11 @@ export default function PublicForm() {
                                         sf.options.map((option: string) => (
                                           <div key={option} className="flex items-center gap-1">
                                             <Checkbox
-                                              id={`c-${rowIndex}-${sf.id}-${option}`}
+                                              id={`c-${field.id}-${rowIndex}-${sf.id}-${option}`}
                                               checked={Array.isArray(row[sf.label]) ? row[sf.label].includes(option) : false}
                                               onCheckedChange={(v) => {
-                                                const newRows = [...(formData[field.label] || [{}])];
+                                                const currentRows = formData[field.label] || [{}];
+                                                const newRows = [...currentRows];
                                                 const currentValues = Array.isArray(newRows[rowIndex][sf.label]) ? [...newRows[rowIndex][sf.label]] : [];
                                                 if (v) {
                                                   if (!currentValues.includes(option)) currentValues.push(option);
@@ -359,14 +363,16 @@ export default function PublicForm() {
                                               }}
                                               className="w-3 h-3"
                                             />
-                                            <Label htmlFor={`c-${rowIndex}-${sf.id}-${option}`} className="text-[10px]">{option}</Label>
+                                            <Label htmlFor={`c-${field.id}-${rowIndex}-${sf.id}-${option}`} className="text-[10px]">{option}</Label>
                                           </div>
                                         ))
                                       ) : (
                                         <Checkbox
+                                          id={`c-${field.id}-${rowIndex}-${sf.id}`}
                                           checked={!!row[sf.label]}
                                           onCheckedChange={(v) => {
-                                            const newRows = [...(formData[field.label] || [{}])];
+                                            const currentRows = formData[field.label] || [{}];
+                                            const newRows = [...currentRows];
                                             newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: !!v };
                                             setData({ ...formData, [field.label]: newRows });
                                           }}
@@ -381,7 +387,8 @@ export default function PublicForm() {
                                       pattern="^\d+:[0-5]\d$"
                                       value={row[sf.label] || ""}
                                       onChange={(e) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
@@ -392,7 +399,8 @@ export default function PublicForm() {
                                     <Input
                                       value={row[sf.label] || ""}
                                       onChange={(e) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
@@ -404,7 +412,8 @@ export default function PublicForm() {
                                       type="number"
                                       value={row[sf.label] || ""}
                                       onChange={(e) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
@@ -416,7 +425,8 @@ export default function PublicForm() {
                                       type="date"
                                       value={row[sf.label] || ""}
                                       onChange={(e) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: e.target.value };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
@@ -427,13 +437,14 @@ export default function PublicForm() {
                                     <Select
                                       value={row[sf.label] || ""}
                                       onValueChange={(v) => {
-                                        const newRows = [...(formData[field.label] || [{}])];
+                                        const currentRows = formData[field.label] || [{}];
+                                        const newRows = [...currentRows];
                                         newRows[rowIndex] = { ...newRows[rowIndex], [sf.label]: v };
                                         setData({ ...formData, [field.label]: newRows });
                                       }}
                                     >
                                       <SelectTrigger className="h-8 text-xs bg-white">
-                                        <SelectValue />
+                                        <SelectValue placeholder="Select..." />
                                       </SelectTrigger>
                                       <SelectContent>
                                         {sf.options?.map((opt: string) => (

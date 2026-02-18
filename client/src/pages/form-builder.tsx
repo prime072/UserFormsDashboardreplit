@@ -58,11 +58,23 @@ export default function FormBuilder() {
     const newField: FormField = {
       id: Math.random().toString(36).substr(2, 9),
       type: "text",
-      label: "New Field",
+      label: `Field ${fields.length + 1}`,
       required: false,
       options: []
     };
     setFields([...fields, newField]);
+  };
+
+  const moveField = (id: string, direction: 'up' | 'down') => {
+    const index = fields.findIndex(f => f.id === id);
+    if (index === -1) return;
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === fields.length - 1) return;
+
+    const newFields = [...fields];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    [newFields[index], newFields[targetIndex]] = [newFields[targetIndex], newFields[index]];
+    setFields(newFields);
   };
 
   const updateField = (id: string, updates: Partial<FormField>) => {
@@ -92,6 +104,26 @@ export default function FormBuilder() {
   };
 
   const handleSave = async () => {
+    // Check for duplicate field labels
+    const labels = fields.map(f => f.label.trim().toLowerCase());
+    const hasDuplicates = labels.some((label, index) => labels.indexOf(label) !== index);
+    if (hasDuplicates) {
+      toast({ title: "Validation Error", description: "Form fields must have unique labels.", variant: "destructive" });
+      return;
+    }
+
+    // Check for duplicate repeater column labels
+    for (const field of fields) {
+      if (field.type === 'repeater' && field.repeaterFields) {
+        const subLabels = field.repeaterFields.map(sf => sf.label.trim().toLowerCase());
+        const hasSubDuplicates = subLabels.some((label, index) => subLabels.indexOf(label) !== index);
+        if (hasSubDuplicates) {
+          toast({ title: "Validation Error", description: `Repeater columns in "${field.label}" must have unique labels.`, variant: "destructive" });
+          return;
+        }
+      }
+    }
+
     try {
       if (isEditing && formId) {
         await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing);
@@ -206,6 +238,26 @@ export default function FormBuilder() {
         <div className="space-y-6">
           {fields.map((field) => (
             <Card key={field.id} className="group relative border-slate-200 hover:border-primary/30">
+              <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  onClick={() => moveField(field.id, 'up')}
+                  disabled={fields.indexOf(field) === 0}
+                >
+                  <Plus className="w-4 h-4 rotate-45" style={{ transform: 'rotate(180deg)' }} />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  onClick={() => moveField(field.id, 'down')}
+                  disabled={fields.indexOf(field) === fields.length - 1}
+                >
+                  <Plus className="w-4 h-4 rotate-45" />
+                </Button>
+              </div>
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <GripVertical className="w-5 h-5 mt-2 text-slate-300" />
