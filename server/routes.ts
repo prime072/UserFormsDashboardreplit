@@ -335,5 +335,46 @@ export async function registerRoutes(
     }
   });
 
+  // User Database Routes
+  app.get("/api/user-databases", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const dbs = await storage.getUserDatabasesByUserId(userId);
+      res.json(dbs);
+    } catch (error) {
+      console.error("Error fetching user databases:", error);
+      res.status(500).json({ message: "Failed to fetch databases" });
+    }
+  });
+
+  app.post("/api/user-databases", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const db = await storage.createUserDatabase({
+        ...req.body,
+        userId,
+      });
+      res.status(201).json(db);
+    } catch (error) {
+      console.error("Error creating user database:", error);
+      res.status(500).json({ message: "Failed to create database" });
+    }
+  });
+
+  app.delete("/api/user-databases/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const db = await storage.getUserDatabase(req.params.id);
+      if (!db || db.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      await storage.deleteUserDatabase(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting database:", error);
+      res.status(500).json({ message: "Failed to delete database" });
+    }
+  });
+
   return httpServer;
 }

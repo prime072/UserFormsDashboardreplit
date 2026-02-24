@@ -1,10 +1,17 @@
 import { type User, type InsertUser, type Form, type InsertForm, type Response, type InsertResponse } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { users, forms, responses } from "@shared/schema";
+import { users, forms, responses, userDatabases, type UserDatabase, type InsertUserDatabase } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
+  // ... existing methods ...
+  getUserDatabase(id: string): Promise<UserDatabase | undefined>;
+  getUserDatabasesByUserId(userId: string): Promise<UserDatabase[]>;
+  createUserDatabase(db: InsertUserDatabase): Promise<UserDatabase>;
+  updateUserDatabase(id: string, updates: Partial<InsertUserDatabase>): Promise<UserDatabase | undefined>;
+  deleteUserDatabase(id: string): Promise<boolean>;
+}
   // User methods
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -96,6 +103,39 @@ export class DatabaseStorage implements IStorage {
       .from(responses)
       .where(eq(responses.formId, formId));
     return result.length;
+  }
+
+  // User Database methods
+  async getUserDatabase(id: string): Promise<UserDatabase | undefined> {
+    const result = await db.select().from(userDatabases).where(eq(userDatabases.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserDatabasesByUserId(userId: string): Promise<UserDatabase[]> {
+    return await db
+      .select()
+      .from(userDatabases)
+      .where(eq(userDatabases.userId, userId))
+      .orderBy(desc(userDatabases.updatedAt));
+  }
+
+  async createUserDatabase(dbData: InsertUserDatabase): Promise<UserDatabase> {
+    const result = await db.insert(userDatabases).values(dbData).returning();
+    return result[0];
+  }
+
+  async updateUserDatabase(id: string, updates: Partial<InsertUserDatabase>): Promise<UserDatabase | undefined> {
+    const result = await db
+      .update(userDatabases)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userDatabases.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteUserDatabase(id: string): Promise<boolean> {
+    const result = await db.delete(userDatabases).where(eq(userDatabases.id, id)).returning();
+    return result.length > 0;
   }
 }
 

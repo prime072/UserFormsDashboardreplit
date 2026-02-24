@@ -76,7 +76,22 @@ export const addDaysToDate = (date: string | Date, days: number): string => {
   return d.toISOString().split('T')[0];
 };
 
-export const calculateHmr = (hmr: string, diffMinutes: number): string => {
-  const totalMinutes = hmrToMinutes(hmr) + diffMinutes;
-  return minutesToHmr(Math.max(0, totalMinutes));
-};
+export const userDatabases = pgTable("user_databases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  config: jsonb("config").notNull(), // Column names and types mapping
+  data: jsonb("data").notNull(), // Actual records
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertUserDatabaseSchema = createInsertSchema(userDatabases).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type UserDatabase = typeof userDatabases.$inferSelect;
+export type InsertUserDatabase = z.infer<typeof insertUserDatabaseSchema>;
