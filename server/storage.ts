@@ -5,18 +5,33 @@ import { users, forms, responses, userDatabases, type UserDatabase, type InsertU
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // ... existing methods ...
+  // User methods
+  getUser(id: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  getAllUsers?(): Promise<User[]>;
+  deleteUser?(id: string): Promise<boolean>;
+
+  // Form methods
+  getForm(id: string): Promise<Form | undefined>;
+  getFormsByUserId(userId: string): Promise<Form[]>;
+  createForm(form: InsertForm): Promise<Form>;
+  updateForm(id: string, updates: Partial<InsertForm>): Promise<Form | undefined>;
+  deleteForm(id: string): Promise<boolean>;
+
+  // Response methods
+  createResponse(response: InsertResponse): Promise<Response>;
+  getResponse?(id: string): Promise<Response | undefined>;
+  getResponsesByFormId(formId: string): Promise<Response[]>;
+  getResponseCount(formId: string): Promise<number>;
+
+  // User Database methods
   getUserDatabase(id: string): Promise<UserDatabase | undefined>;
   getUserDatabasesByUserId(userId: string): Promise<UserDatabase[]>;
   createUserDatabase(db: InsertUserDatabase): Promise<UserDatabase>;
   updateUserDatabase(id: string, updates: Partial<InsertUserDatabase>): Promise<UserDatabase | undefined>;
   deleteUserDatabase(id: string): Promise<boolean>;
 }
-  // User methods
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  getAllUsers?(): Promise<User[]>;
   deleteUser?(id: string): Promise<boolean>;
   
   // Form methods

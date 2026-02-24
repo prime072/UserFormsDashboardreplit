@@ -54,10 +54,22 @@ const responseSchema = new mongoose.Schema({
   submittedAt: { type: Date, default: Date.now },
 });
 
+const userDatabaseSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  userId: String,
+  name: String,
+  description: String,
+  config: mongoose.Schema.Types.Mixed,
+  data: mongoose.Schema.Types.Mixed,
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
 const UserModel = mongoose.model("User", userSchema, "users");
 const FormModel = mongoose.model("Form", formSchema, "forms");
 const ResponseModel = mongoose.model("Response", responseSchema, "responses");
 const PrivateUserModel = mongoose.model("PrivateUser", privateUserSchema, "private_users");
+const UserDatabaseModel = mongoose.model("UserDatabase", userDatabaseSchema, "user_databases");
 
 export class MongoDBStorage implements IStorage {
   private connected = false;
@@ -394,6 +406,58 @@ export class MongoDBStorage implements IStorage {
     if (!doc) return undefined;
     const { _id, ...rest } = doc as any;
     return rest;
+  }
+
+  // User Database methods
+  async getUserDatabase(id: string): Promise<UserDatabase | undefined> {
+    await this.connect();
+    const doc = await UserDatabaseModel.findOne({ id }).lean();
+    if (!doc) return undefined;
+    const { _id, ...rest } = doc as any;
+    return rest as UserDatabase;
+  }
+
+  async getUserDatabasesByUserId(userId: string): Promise<UserDatabase[]> {
+    await this.connect();
+    const docs = await UserDatabaseModel.find({ userId })
+      .sort({ updatedAt: -1 })
+      .lean();
+    return docs.map((doc: any) => {
+      const { _id, ...rest } = doc;
+      return rest as UserDatabase;
+    });
+  }
+
+  async createUserDatabase(dbData: InsertUserDatabase): Promise<UserDatabase> {
+    await this.connect();
+    const id = Math.random().toString(36).substr(2, 9);
+    const newDb = {
+      id,
+      ...dbData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const doc = await UserDatabaseModel.create(newDb);
+    const { _id, ...rest } = doc.toObject() as any;
+    return rest as UserDatabase;
+  }
+
+  async updateUserDatabase(id: string, updates: Partial<InsertUserDatabase>): Promise<UserDatabase | undefined> {
+    await this.connect();
+    const doc = await UserDatabaseModel.findOneAndUpdate(
+      { id },
+      { ...updates, updatedAt: new Date() },
+      { new: true }
+    ).lean();
+    if (!doc) return undefined;
+    const { _id, ...rest } = doc as any;
+    return rest as UserDatabase;
+  }
+
+  async deleteUserDatabase(id: string): Promise<boolean> {
+    await this.connect();
+    const result = await UserDatabaseModel.deleteOne({ id });
+    return result.deletedCount > 0;
   }
 }
 
