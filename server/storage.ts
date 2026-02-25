@@ -32,11 +32,6 @@ export interface IStorage {
   updateUserDatabase(id: string, updates: Partial<InsertUserDatabase>): Promise<UserDatabase | undefined>;
   deleteUserDatabase(id: string): Promise<boolean>;
 }
-  deleteUser?(id: string): Promise<boolean>;
-  
-  // Form methods
-  getForm(id: string): Promise<Form | undefined>;
-  getFormsByUserId(userId: string): Promise<Form[]>;
   createForm(form: InsertForm): Promise<Form>;
   updateForm(id: string, updates: Partial<InsertForm>): Promise<Form | undefined>;
   deleteForm(id: string): Promise<boolean>;
