@@ -1,7 +1,6 @@
-import { type User, type InsertUser, type Form, type InsertForm, type Response, type InsertResponse } from "@shared/schema";
+import { type User, type InsertUser, type Form, type InsertForm, type Response, type InsertResponse, userDatabases, type UserDatabase, type InsertUserDatabase, users, forms, responses } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { users, forms, responses, userDatabases, type UserDatabase, type InsertUserDatabase } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
@@ -31,16 +30,6 @@ export interface IStorage {
   createUserDatabase(db: InsertUserDatabase): Promise<UserDatabase>;
   updateUserDatabase(id: string, updates: Partial<InsertUserDatabase>): Promise<UserDatabase | undefined>;
   deleteUserDatabase(id: string): Promise<boolean>;
-}
-  createForm(form: InsertForm): Promise<Form>;
-  updateForm(id: string, updates: Partial<InsertForm>): Promise<Form | undefined>;
-  deleteForm(id: string): Promise<boolean>;
-  
-  // Response methods
-  createResponse(response: InsertResponse): Promise<Response>;
-  getResponse?(id: string): Promise<Response | undefined>;
-  getResponsesByFormId(formId: string): Promise<Response[]>;
-  getResponseCount(formId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
