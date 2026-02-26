@@ -76,6 +76,11 @@ export const addDaysToDate = (date: string | Date, days: number): string => {
   return d.toISOString().split('T')[0];
 };
 
+export const calculateHmr = (hmr: string, diffMinutes: number): string => {
+  const totalMinutes = hmrToMinutes(hmr) + diffMinutes;
+  return minutesToHmr(Math.max(0, totalMinutes));
+};
+
 export const userDatabases = pgTable("user_databases", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
