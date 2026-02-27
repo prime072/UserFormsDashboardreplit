@@ -21,6 +21,7 @@ import PrivateUserDashboard from "@/pages/private-user-dashboard";
 import PrivateUserLogin from "@/pages/private-user-login";
 import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
+import DatabaseManagement from "@/pages/database-management";
 import { ReactNode } from "react";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -83,6 +84,9 @@ function Router() {
       </Route>
       <Route path="/settings">
         <ProtectedRoute component={Settings} />
+      </Route>
+      <Route path="/databases">
+        <ProtectedRoute component={DatabaseManagement} />
       </Route>
 
       {/* Admin Routes */}
