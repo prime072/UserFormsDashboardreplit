@@ -335,6 +335,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/forms-database", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const forms = await storage.getFormsByUserId(userId);
+      res.json(forms);
+    } catch (error) {
+      console.error("Error fetching forms database:", error);
+      res.status(500).json({ message: "Failed to fetch forms database" });
+    }
+  });
+
   // User Database Routes
   app.get("/api/user-databases", isAuthenticated, async (req, res) => {
     try {

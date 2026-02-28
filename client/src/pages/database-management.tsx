@@ -22,6 +22,10 @@ export default function DatabaseManagement() {
     queryKey: ["/api/user-databases"],
   });
 
+  const { data: formDatabases, isLoading: isLoadingForms } = useQuery<any[]>({
+    queryKey: ["/api/forms-database"],
+  });
+
   const createMutation = useMutation({
     mutationFn: async (newDb: { name: string; description: string; config: any; data: any[] }) => {
       const res = await fetch("/api/user-databases", {
@@ -123,6 +127,29 @@ export default function DatabaseManagement() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Existing Form Databases */}
+          {formDatabases?.map((form) => (
+            <Card key={form.id} data-testid={`card-form-db-${form.id}`} className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Table className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                    Form Database
+                  </div>
+                </div>
+                <CardTitle className="mt-4">{form.title}</CardTitle>
+                <CardDescription>Automatic database for form submissions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" onClick={() => window.location.href = `/forms/${form.id}/responses`}>
+                  View Submissions
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+
           {databases?.map((db) => (
             <Card key={db.id} data-testid={`card-db-${db.id}`}>
               <CardHeader>
