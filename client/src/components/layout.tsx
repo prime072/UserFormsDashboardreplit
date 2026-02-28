@@ -10,7 +10,8 @@ import {
   Menu,
   BarChart3,
   User,
-  Users
+  Users,
+  Database
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -24,6 +25,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/forms", label: "My Forms", icon: FileText },
     { href: "/responses", label: "Responses", icon: BarChart3 },
+    { href: "/databases", label: "Databases", icon: Database },
     { href: "/private-users", label: "Private Users", icon: Users },
     { href: "/profile", label: "Profile", icon: User },
     { href: "/settings", label: "Settings", icon: Settings },
@@ -45,14 +47,14 @@ export default function Layout({ children }: { children: ReactNode }) {
             const isActive = location === item.href;
             return (
               <Link key={item.href} href={item.href}>
-                <a className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                <div className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${
                   isActive 
                     ? "bg-primary/10 text-primary dark:bg-primary/20" 
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200"
                 }`}>
                   <item.icon className="w-4 h-4" />
                   {item.label}
-                </a>
+                </div>
               </Link>
             );
           })}
@@ -103,10 +105,10 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <nav className="flex-1 p-4 space-y-1">
                   {navItems.map((item) => (
                     <Link key={item.href} href={item.href}>
-                      <a className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                      <div className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium cursor-pointer text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                         <item.icon className="w-4 h-4" />
                         {item.label}
-                      </a>
+                      </div>
                     </Link>
                   ))}
                 </nav>

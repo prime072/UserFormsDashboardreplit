@@ -1,7 +1,7 @@
 import Layout from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, FileCheck, TrendingUp, Edit, ExternalLink, Share2, MoreHorizontal, Trash2, AlertCircle, Lock } from "lucide-react";
+import { Plus, Users, FileCheck, TrendingUp, Edit, ExternalLink, Share2, MoreHorizontal, Trash2, AlertCircle, Lock, Database } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useForms } from "@/lib/form-context";
 import { useAuth } from "@/lib/auth-context";
@@ -233,6 +233,12 @@ export default function Dashboard() {
                 <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-view-forms-card">
                   <FileCheck className="w-4 h-4" />
                   Browse All Forms
+                </Button>
+              </Link>
+              <Link href="/databases">
+                <Button className="w-full justify-start gap-2" variant="outline" data-testid="button-view-databases-card">
+                  <Database className="w-4 h-4" />
+                  Manage Databases
                 </Button>
               </Link>
             </CardContent>
