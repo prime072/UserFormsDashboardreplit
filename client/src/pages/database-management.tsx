@@ -182,20 +182,20 @@ export default function DatabaseManagement() {
             </Card>
           ))}
 
-          {databases?.length === 0 && (
-            <div className="col-span-full py-12 text-center border-2 border-dashed rounded-lg">
-              <Database className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold">No databases found</h3>
-              <p className="text-muted-foreground">Create your first database to start organizing data.</p>
-              <Button
-                variant="outline"
-                className="mt-6"
-                onClick={() => setIsCreateOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" /> New Database
-              </Button>
-            </div>
-          )}
+        {databases?.length === 0 && (!formDatabases || formDatabases.length === 0) && (
+          <div className="col-span-full py-12 text-center border-2 border-dashed rounded-lg">
+            <Database className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-semibold">No databases found</h3>
+            <p className="text-muted-foreground">Create your first database to start organizing data.</p>
+            <Button
+              variant="outline"
+              className="mt-6"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" /> New Database
+            </Button>
+          </div>
+        )}
         </div>
       </div>
     </Layout>
