@@ -1,12 +1,82 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, Table, Loader2, Plus } from "lucide-react";
+import { Database, Table, Loader2, Plus, Users, FileText } from "lucide-react";
 import Layout from "@/components/layout";
+import { useAuth } from "@/lib/auth-context";
+import { useState, useEffect } from "react";
+
+function FormDatabaseCard({ form }: { form: any }) {
+  const { user } = useAuth();
+  const [responseCount, setResponseCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`/api/forms/${form.id}/stats`, {
+          headers: { "x-user-id": user?.id || "" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setResponseCount(data.responseCount);
+        }
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
+    if (user?.id) fetchStats();
+  }, [form.id, user?.id]);
+
+  return (
+    <Card key={form.id} data-testid={`card-form-db-${form.id}`} className="border-primary/20 bg-primary/5 shadow-md hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Table className="h-6 w-6 text-primary" />
+          </div>
+          <div className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
+            Form Database
+          </div>
+        </div>
+        <CardTitle className="mt-4">{form.title}</CardTitle>
+        <CardDescription>Automatic database for form submissions</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Database className="mr-2 h-4 w-4" />
+            <span>Responses database</span>
+          </div>
+          <div className="flex items-center text-sm font-medium text-primary">
+            <Users className="mr-2 h-4 w-4" />
+            <span>{responseCount !== null ? responseCount : "..."} Submissions</span>
+          </div>
+          <div className="flex items-center text-sm text-muted-foreground">
+            <FileText className="mr-2 h-4 w-4" />
+            <span>{form.fields?.length || 0} Columns (Fields)</span>
+          </div>
+        </div>
+        <Button variant="outline" className="w-full" onClick={() => window.location.href = `/forms/${form.id}/responses`}>
+          Manage Data
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DatabaseManagement() {
+  const { user } = useAuth();
+  
   const { data: formDatabases, isLoading: isLoadingForms } = useQuery<any[]>({
     queryKey: ["/api/forms-database"],
+    queryFn: async () => {
+      const res = await fetch("/api/forms-database", {
+        headers: { "x-user-id": user?.id || "" }
+      });
+      if (!res.ok) throw new Error("Failed to fetch forms");
+      return res.json();
+    },
+    enabled: !!user?.id
   });
 
   if (isLoadingForms) {
@@ -32,29 +102,7 @@ export default function DatabaseManagement() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Existing Form Databases */}
           {formDatabases?.map((form) => (
-            <Card key={form.id} data-testid={`card-form-db-${form.id}`} className="border-primary/20 bg-primary/5 shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Table className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                    Form Database
-                  </div>
-                </div>
-                <CardTitle className="mt-4">{form.title}</CardTitle>
-                <CardDescription>Automatic database for form submissions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center text-sm text-muted-foreground mb-4">
-                  <Database className="mr-2 h-4 w-4" />
-                  Manage submissions and data for this form.
-                </div>
-                <Button variant="outline" className="w-full" onClick={() => window.location.href = `/forms/${form.id}/responses`}>
-                  View Data
-                </Button>
-              </CardContent>
-            </Card>
+            <FormDatabaseCard key={form.id} form={form} />
           ))}
 
           {(!formDatabases || formDatabases.length === 0) && !isLoadingForms && (
