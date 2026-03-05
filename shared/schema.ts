@@ -23,7 +23,9 @@ export const forms = pgTable("forms", {
   title: text("title").notNull(),
   status: text("status").notNull().default("Active"),
   visibility: text("visibility").notNull().default("public"),
+  canPrivateUserViewResponses: text("can_private_user_view_responses").notNull().default("false"),
   fields: jsonb("fields").notNull(),
+  // ... rest of the fields
   outputFormats: jsonb("output_formats").notNull().default(sql`'["thank_you"]'::jsonb`),
   confirmationStyle: text("confirmation_style").notNull().default("table"),
   confirmationText: text("confirmation_text"),
