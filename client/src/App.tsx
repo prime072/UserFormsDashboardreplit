@@ -28,11 +28,10 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Call hooks first, then conditionally render
   if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
-  if (!user) {
-    // Use effect pattern to navigate without early return
+  const privateUserSession = sessionStorage.getItem("private_user");
+  if (!user && !privateUserSession) {
     setTimeout(() => setLocation("/auth"), 0);
     return <div className="min-h-screen flex items-center justify-center">Redirecting...</div>;
   }

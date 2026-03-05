@@ -39,7 +39,7 @@ export default function PrivateUserLogin() {
       const user = await response.json();
       sessionStorage.setItem("private_user", JSON.stringify(user));
       toast({ title: "Success", description: "Login successful" });
-      setLocation("/private-forms");
+      setLocation("/dashboard");
     } catch (error) {
       setError("Login failed. Please try again.");
     } finally {

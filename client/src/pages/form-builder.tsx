@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus, GripVertical, ChevronLeft, Save, X, Lock } from "lucide-react";
 import { Link, useLocation, useRoute } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,7 @@ export default function FormBuilder() {
   const [whatsappFormat, setWhatsappFormat] = useState("");
   const [gridConfig, setGridConfig] = useState<GridConfig>({ headers: [], rows: [] });
   const [allowEditing, setAllowEditing] = useState(true);
+  const [canPrivateUserViewResponses, setCanPrivateUserViewResponses] = useState(false);
 
   useEffect(() => {
     if (isEditing && formId) {
@@ -50,6 +52,7 @@ export default function FormBuilder() {
         setWhatsappFormat(existingForm.whatsappFormat || "");
         setGridConfig(existingForm.gridConfig || { headers: [], rows: [] });
         setAllowEditing(existingForm.allowEditing ?? true);
+        setCanPrivateUserViewResponses(existingForm.canPrivateUserViewResponses === "true");
       }
     }
   }, [isEditing, formId, getForm]);
@@ -126,10 +129,10 @@ export default function FormBuilder() {
 
     try {
       if (isEditing && formId) {
-        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing);
+        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, canPrivateUserViewResponses ? "true" : "false");
         toast({ title: "Form Updated", description: "Your changes have been saved." });
       } else {
-        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing);
+        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, canPrivateUserViewResponses ? "true" : "false");
         toast({ title: "Form Created", description: "Your form has been created successfully." });
       }
       setTimeout(() => setLocation("/forms"), 1000);
@@ -190,6 +193,14 @@ export default function FormBuilder() {
                 <div className="flex items-center gap-2">
                   <Switch checked={allowEditing} onCheckedChange={setAllowEditing} />
                   <span className="text-sm font-medium">Allow Response Editing</span>
+                </div>
+                <div className="flex items-center gap-2 border-l pl-6">
+                  <Checkbox 
+                    id="canPrivateUserViewResponses" 
+                    checked={canPrivateUserViewResponses} 
+                    onCheckedChange={(v) => setCanPrivateUserViewResponses(!!v)} 
+                  />
+                  <Label htmlFor="canPrivateUserViewResponses" className="text-sm font-medium cursor-pointer">Private User View Responses</Label>
                 </div>
                 <Select value={visibility} onValueChange={(v: any) => setVisibility(v)}>
                   <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>

@@ -31,7 +31,12 @@ export default function Dashboard() {
   const { forms, responses, deleteForm } = useForms();
   const { user, isSuspended, logout } = useAuth();
   const [, setLocation] = useLocation();
+  
+  const privateUserSession = sessionStorage.getItem("private_user");
+  const privateUser = privateUserSession ? JSON.parse(privateUserSession) : null;
+
   const { toast } = useToast();
+  // ... rest of the code
   const [showSuspensionDialog, setShowSuspensionDialog] = useState(isSuspended);
   const [liveResponses, setLiveResponses] = useState(0);
 

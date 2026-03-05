@@ -28,44 +28,27 @@ export default function ResponsesView() {
   const [search, setSearch] = useState("");
   const [filteredResponses, setFilteredResponses] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (!search) {
-      setFilteredResponses(formResponses);
-      return;
-    }
+  const fetchFormResponses = async () => {
+    if (!formId) return;
+    try {
+      const privateUser = JSON.parse(sessionStorage.getItem("private_user") || "null");
+      const headers: Record<string, string> = {};
+      if (user?.id) headers["x-user-id"] = user.id;
+      if (privateUser?.id) headers["x-private-user-id"] = privateUser.id;
 
-    const results = formResponses.filter((response: any) => {
-      // 1. Basic matching
-      const hasBasicMatch = Object.entries(response.data).some(([key, value]) => {
-        const strValue = String(value || "").toLowerCase();
-        const searchTerm = search.toLowerCase();
-        return strValue.includes(searchTerm);
-      });
-      if (hasBasicMatch) return true;
-
-      // 2. Calculation matching: {{label}} + 1
-      const calcRegex = /\{\{(.+?)\}\}\s*([+-])\s*(\d+)/;
-      const match = search.match(calcRegex);
-      if (match) {
-        const [_, label, op, val] = match;
-        const fieldKey = Object.keys(response.data).find(k => k.toLowerCase() === label.toLowerCase());
-        if (fieldKey) {
-          const value = response.data[fieldKey];
-          const diff = parseInt(val);
-          if (fieldKey.toLowerCase().includes('date') && value) {
-            const calculated = addDaysToDate(String(value), op === '+' ? diff : -diff);
-            // This logic is tricky for "filtering" (what are we comparing against?), 
-            // but the user asked for this to be "used in query filter".
-            // For now we'll allow it if the calculated value is somehow matched elsewhere or just exists.
-            // A more robust implementation would need a full query engine.
-          }
-        }
+      const response = await fetch(`/api/forms/${formId}/responses`, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setFilteredResponses(data);
       }
+    } catch (error) {
+      console.error("Error fetching responses:", error);
+    }
+  };
 
-      return false;
-    });
-    setFilteredResponses(results);
-  }, [search, formResponses]);
+  useEffect(() => {
+    fetchFormResponses();
+  }, [formId, user?.id]);
 
   if (!form) {
     return (

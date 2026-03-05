@@ -8,7 +8,8 @@ import { registerAuthRoutes } from "./auth-routes";
 function isAuthenticated(req: any, res: any, next: any) {
   // Accept requests with x-user-id header
   const userId = req.headers["x-user-id"];
-  if (userId) {
+  const privateUserId = req.headers["x-private-user-id"];
+  if (userId || privateUserId) {
     return next();
   }
   res.status(401).json({ message: "Unauthorized" });
@@ -92,7 +93,7 @@ export async function registerRoutes(
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, ...bodyRest } = req.body;
+      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, canPrivateUserViewResponses, ...bodyRest } = req.body;
       const validatedData = insertFormSchema.parse({
         ...bodyRest,
         userId,
@@ -105,6 +106,7 @@ export async function registerRoutes(
         gridConfig,
         whatsappFormat,
         allowEditing: allowEditing ?? true,
+        canPrivateUserViewResponses: canPrivateUserViewResponses || "false",
       } as any;
       const form = await storage.createForm(formDataWithExtras);
       // Update user metrics
@@ -133,7 +135,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Forbidden" });
       }
       
-      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, ...bodyRest } = req.body;
+      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, canPrivateUserViewResponses, ...bodyRest } = req.body;
       const validatedData = insertFormSchema.partial().parse(bodyRest);
       const updateDataWithExtras = {
         ...validatedData,
@@ -143,6 +145,7 @@ export async function registerRoutes(
         ...(gridConfig !== undefined && { gridConfig }),
         ...(whatsappFormat !== undefined && { whatsappFormat }),
         ...(allowEditing !== undefined && { allowEditing }),
+        ...(canPrivateUserViewResponses !== undefined && { canPrivateUserViewResponses }),
       } as any;
       const updatedForm = await storage.updateForm(req.params.id, updateDataWithExtras);
       res.json(updatedForm);
@@ -242,15 +245,27 @@ export async function registerRoutes(
   app.get("/api/forms/:id/responses", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const privateUserId = req.headers["x-private-user-id"];
       const form = await storage.getForm(req.params.id);
+      
       if (!form) {
         return res.status(404).json({ message: "Form not found" });
       }
-      if (form.userId !== userId) {
-        return res.status(403).json({ message: "Forbidden" });
+
+      if (userId) {
+        if (form.userId !== userId) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      } else if (privateUserId) {
+        const privateUser = await (storage as any).getPrivateUser?.(privateUserId);
+        if (!privateUser || !privateUser.accessibleForms.includes(req.params.id)) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+        if (form.canPrivateUserViewResponses !== "true") {
+           return res.status(403).json({ message: "Responses access disabled for this form" });
+        }
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
       }
       
       const responses = await storage.getResponsesByFormId(req.params.id);
