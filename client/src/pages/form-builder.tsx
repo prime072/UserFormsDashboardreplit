@@ -36,8 +36,15 @@ export default function FormBuilder() {
   const [confirmationText, setConfirmationText] = useState("");
   const [whatsappFormat, setWhatsappFormat] = useState("");
   const [gridConfig, setGridConfig] = useState<GridConfig>({ headers: [], rows: [] });
-  const [allowEditing, setAllowEditing] = useState(true);
-  const [canPrivateUserViewResponses, setCanPrivateUserViewResponses] = useState(false);
+  const [userDatabases, setUserDatabases] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadUserDBs = async () => {
+      const dbs = await fetchUserDatabases();
+      setUserDatabases(dbs);
+    };
+    loadUserDBs();
+  }, []);
 
   useEffect(() => {
     if (isEditing && formId) {

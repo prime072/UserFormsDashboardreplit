@@ -199,6 +199,7 @@ type FormContextType = {
   updateResponse: (responseId: string, data: Record<string, any>) => void;
   deleteResponse: (responseId: string) => void;
   fetchFormResponses: (formId: string) => Promise<void>;
+  fetchUserDatabases: () => Promise<UserDatabase[]>;
   resolveLookup: (
     lookupConfig: {
       formId: string;
@@ -207,6 +208,7 @@ type FormContextType = {
       nthIndex?: number;
       queryField?: string;
       queryValue?: string;
+      isUserDatabase?: boolean;
     },
     currentFormData?: Record<string, any>,
     cellValues?: Record<string, string>,
@@ -427,6 +429,21 @@ export function FormProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const fetchUserDatabases = async (): Promise<UserDatabase[]> => {
+    if (!user?.id) return [];
+    try {
+      const response = await fetch("/api/user-databases", {
+        headers: { "x-user-id": user.id },
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error("Error fetching user databases:", error);
+    }
+    return [];
+  };
+
   const updateResponse = (responseId: string, data: Record<string, any>) => {
     const updatedResponses = responses.map((r) =>
       r.id === responseId ? { ...r, data } : r,
@@ -457,33 +474,56 @@ export function FormProvider({ children }: { children: ReactNode }) {
       nthIndex?: number;
       queryField?: string;
       queryValue?: string;
+      isUserDatabase?: boolean;
     },
     currentFormData?: Record<string, any>,
     cellValues?: Record<string, string>,
   ) => {
     try {
-      const response = await fetch(`/api/forms/${lookupConfig.formId}/data`, {
-        headers: { "x-user-id": user?.id || "" },
-      });
-      if (!response.ok) return "Lookup Error";
-      const data = await response.json();
+      let data: any[] = [];
+      if (lookupConfig.isUserDatabase) {
+        const response = await fetch(`/api/user-databases/${lookupConfig.formId}`, {
+          headers: { "x-user-id": user?.id || "" },
+        });
+        if (response.ok) {
+          const dbObj = await response.json();
+          data = dbObj.data || [];
+        }
+      } else {
+        const response = await fetch(`/api/forms/${lookupConfig.formId}/data`, {
+          headers: { "x-user-id": user?.id || "" },
+        });
+        if (response.ok) {
+          const rawData = await response.json();
+          data = rawData.map((r: any) => ({ ...r, data: r.data }));
+        }
+      }
+
       if (!data || data.length === 0) return "No Data";
 
-      let targetResponse;
+      let targetItem;
+      // Normalizing helper to access data either from item.data[field] (form responses) or item[field] (user database rows)
+      const getValue = (item: any, field: string) => {
+        if (!item) return undefined;
+        if (lookupConfig.isUserDatabase) return item[field];
+        return item.data ? item.data[field] : item[field];
+      };
+
       if (lookupConfig.lookupType === "first") {
         const offset = lookupConfig.nthIndex || 0;
-        targetResponse = data[data.length - 1 - offset];
+        targetItem = data[data.length - 1 - offset];
       } else if (lookupConfig.lookupType === "last") {
         const offset = lookupConfig.nthIndex || 0;
-        targetResponse = data[offset];
+        targetItem = data[offset];
       } else if (lookupConfig.lookupType === "nth") {
         const index = lookupConfig.nthIndex || 1;
-        targetResponse = data[data.length - index];
+        targetItem = data[data.length - index];
       } else if (
         lookupConfig.lookupType === "query" &&
         lookupConfig.queryField
       ) {
         let qVal = lookupConfig.queryValue || "";
+        // ... rest of substitution logic
 
         // Support [[CellID]] substitution
         if (qVal.includes("[[") && cellValues) {
@@ -555,14 +595,14 @@ export function FormProvider({ children }: { children: ReactNode }) {
 
         const normalizedQVal = normalizeDateValue(qVal);
 
-        targetResponse = data.find((r: any) => {
-          const dbValue = r.data[lookupConfig.queryField!];
+        targetItem = data.find((r: any) => {
+          const dbValue = getValue(r, lookupConfig.queryField!);
           return normalizeDateValue(dbValue) === normalizedQVal;
         });
       }
 
-      return targetResponse
-        ? String(targetResponse.data[lookupConfig.fieldId] || "Not Found")
+      return targetItem
+        ? String(getValue(targetItem, lookupConfig.fieldId) || "Not Found")
         : "Not Found";
     } catch (error) {
       console.error("Lookup resolution error:", error);
@@ -584,6 +624,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
         updateResponse,
         deleteResponse,
         fetchFormResponses,
+        fetchUserDatabases,
         resolveLookup,
       }}
     >

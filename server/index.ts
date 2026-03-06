@@ -61,7 +61,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await registerRoutes(httpServer, app);
+  await registerRoutes(app);
   registerPrivateUserRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

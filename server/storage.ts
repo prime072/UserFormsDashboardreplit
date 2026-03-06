@@ -1,5 +1,4 @@
 import { type User, type InsertUser, type Form, type InsertForm, type Response, type InsertResponse, userDatabases, type UserDatabase, type InsertUserDatabase, users, forms, responses } from "@shared/schema";
-import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
@@ -138,10 +137,8 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Use MongoDB if MONGODB_URI is set, otherwise use PostgreSQL
 import { mongoStorage } from "./mongo-storage";
 
-// Ensure MongoDB is connected if URI is provided
 if (process.env.MONGODB_URI) {
   mongoStorage.connect().catch(err => {
     console.error("Failed to connect to MongoDB on startup:", err);
