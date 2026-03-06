@@ -180,34 +180,36 @@ export default function PrivateUserDashboard() {
                       <p className="text-sm text-slate-500">No forms available</p>
                     ) : (
                       forms.map((form) => (
-                        <label key={form.id} className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={selectedUserAccess[privateUser.id]?.includes(form.id) || false}
-                            onCheckedChange={(checked) => {
-                              const current = selectedUserAccess[privateUser.id] || [];
-                              setSelectedUserAccess({
-                                ...selectedUserAccess,
-                                [privateUser.id]: checked
-                                  ? [...current, form.id]
-                                  : current.filter((id) => id !== form.id),
-                              });
-                            }}
-                            data-testid={`checkbox-form-${form.id}-${privateUser.id}`}
-                          />
-                          <span className="text-sm">{form.title}</span>
-                        </label>
-                        {selectedUserAccess[privateUser.id]?.includes(form.id) && (
-                          <div className="ml-6 mt-1 flex items-center gap-2">
-                            <Link href={`/forms/${form.id}/responses`}>
-                              <Button variant="link" size="sm" className="h-auto p-0 text-xs">
-                                <Eye className="w-3 h-3 mr-1" />
-                                View Responses Link
-                              </Button>
-                            </Link>
-                            <span className="text-[10px] text-muted-foreground">(Requires "Private users can view responses" enabled in Form Settings)</span>
-                          </div>
-                        )}
-                      </div>
+                        <div key={form.id}>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <Checkbox
+                              checked={selectedUserAccess[privateUser.id]?.includes(form.id) || false}
+                              onCheckedChange={(checked) => {
+                                const current = selectedUserAccess[privateUser.id] || [];
+                                setSelectedUserAccess({
+                                  ...selectedUserAccess,
+                                  [privateUser.id]: checked
+                                    ? [...current, form.id]
+                                    : current.filter((id) => id !== form.id),
+                                });
+                              }}
+                              data-testid={`checkbox-form-${form.id}-${privateUser.id}`}
+                            />
+                            <span className="text-sm">{form.title}</span>
+                          </label>
+                          {selectedUserAccess[privateUser.id]?.includes(form.id) && (
+                            <div className="ml-6 mt-1 flex items-center gap-2">
+                              <Link href={`/forms/${form.id}/responses`}>
+                                <Button variant="link" size="sm" className="h-auto p-0 text-xs text-blue-600">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  View Responses Link
+                                </Button>
+                              </Link>
+                              <span className="text-[10px] text-muted-foreground">(Requires "Private users can view responses" enabled in Form Settings)</span>
+                            </div>
+                          )}
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>

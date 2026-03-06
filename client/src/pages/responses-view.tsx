@@ -18,27 +18,28 @@ export default function ResponsesView() {
   const [match, params] = useRoute("/forms/:id/responses");
   const { toast } = useToast();
   const { user, isSuspended } = useAuth();
-  const { getForm, getFormResponses, updateResponse, deleteResponse, fetchFormResponses } = useForms();
+  const { getForm, updateResponse, deleteResponse } = useForms();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
+  const [responses, setResponses] = useState<any[]>([]);
 
   const formId = params?.id;
   const form = formId ? getForm(formId) : undefined;
-  const formResponses = formId ? getFormResponses(formId) : [];
   const [search, setSearch] = useState("");
   const [filteredResponses, setFilteredResponses] = useState<any[]>([]);
 
-  const fetchFormResponses = async () => {
+  const loadResponses = async () => {
     if (!formId) return;
     try {
       const privateUser = JSON.parse(sessionStorage.getItem("private_user") || "null");
       const headers: Record<string, string> = {};
       if (user?.id) headers["x-user-id"] = user.id;
-      if (privateUser?.id) headers["x-private-user-id"] = privateUser.id;
+      if (privateUser?.userId) headers["x-private-user-id"] = privateUser.userId;
 
       const response = await fetch(`/api/forms/${formId}/responses`, { headers });
       if (response.ok) {
         const data = await response.json();
+        setResponses(data);
         setFilteredResponses(data);
       }
     } catch (error) {
@@ -47,7 +48,7 @@ export default function ResponsesView() {
   };
 
   useEffect(() => {
-    fetchFormResponses();
+    loadResponses();
   }, [formId, user?.id]);
 
   if (!form) {
@@ -86,7 +87,7 @@ export default function ResponsesView() {
   };
 
   const handleDownloadXLSX = () => {
-    if (formResponses.length === 0) {
+    if (responses.length === 0) {
       toast({
         title: "No Data",
         description: "No responses to download.",
@@ -96,7 +97,7 @@ export default function ResponsesView() {
     }
 
     // Create worksheet data
-    const wsData = formResponses.map(response => ({
+    const wsData = responses.map(response => ({
       ...response.data,
       'Submitted At': response.submittedAt
     }));
@@ -129,7 +130,7 @@ export default function ResponsesView() {
             </Link>
             <div>
               <h1 className="text-3xl font-display font-bold text-slate-900">{form.title}</h1>
-              <p className="text-slate-500 mt-1">{formResponses.length} responses</p>
+              <p className="text-slate-500 mt-1">{responses.length} responses</p>
             </div>
           </div>
           <div className="flex gap-2">
