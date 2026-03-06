@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { registerPrivateUserRoutes } from "./private-user-routes";
+import { registerAuthRoutes } from "./auth-routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
@@ -62,6 +63,7 @@ app.use((req, res, next) => {
 
 (async () => {
   await registerRoutes(app);
+  registerAuthRoutes(app);
   registerPrivateUserRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -87,6 +89,8 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
+  
+  // Use a different port if 5000 is taken, or just rely on Replit's restart
   httpServer.listen(
     {
       port,

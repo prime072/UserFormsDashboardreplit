@@ -111,7 +111,7 @@ export class MongoDBStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     await this.connect();
-    const doc = await UserModel.findOne({ email }).lean();
+    const doc = await UserModel.findOne({ $or: [{ email }, { username: email }] }).lean();
     if (!doc) return undefined;
     const { _id, ...rest } = doc as any;
     return rest as User;
