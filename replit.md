@@ -74,6 +74,13 @@ Preferred communication style: Simple, everyday language.
 - `/api/forms/:id/stats` - fetches statistics for a specific form
 - All endpoints properly authenticated with x-user-id header
 
+### Private User Response Access
+- Private users can view responses for forms they have access to (if owner enables `canPrivateUserViewResponses`)
+- `/api/private-user/responses` - fetches all responses for accessible forms (requires x-private-user-id header)
+- `/api/private-user/forms/:id/responses` - fetches responses for specific form (requires x-private-user-id header and form permission)
+- Private user dashboard automatically loads accessible forms and their responses
+- Form owners can enable/disable private user response viewing on a per-form basis
+
 ## External Dependencies
 
 ### Database

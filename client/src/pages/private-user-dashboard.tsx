@@ -21,14 +21,20 @@ export default function PrivateUserDashboard() {
   const { user } = useAuth();
   const { forms } = useForms();
   const { toast } = useToast();
+  
+  const privateUserSession = sessionStorage.getItem("private_user");
+  const privateUser = privateUserSession ? JSON.parse(privateUserSession) : null;
+  
   const [privateUsers, setPrivateUsers] = useState<PrivateUser[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", password: "" });
   const [selectedUserAccess, setSelectedUserAccess] = useState<{ [key: string]: string[] }>({});
+  const [responses, setResponses] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchPrivateUsers();
-  }, [user?.id]);
+    if (user?.id) fetchPrivateUsers();
+    if (privateUser?.id) fetchPrivateUserResponses();
+  }, [user?.id, privateUser?.id]);
 
   const fetchPrivateUsers = async () => {
     if (!user?.id) return;
@@ -47,6 +53,23 @@ export default function PrivateUserDashboard() {
       }
     } catch (error) {
       console.error("Error fetching private users:", error);
+    }
+  };
+
+  const fetchPrivateUserResponses = async () => {
+    if (!privateUser?.id) return;
+    try {
+      const response = await fetch("/api/private-user/responses", {
+        headers: { "x-private-user-id": privateUser.id },
+      });
+      if (!response.ok) {
+        console.error("Failed to fetch responses:", response.status);
+        return;
+      }
+      const data = await response.json();
+      setResponses(data || []);
+    } catch (error) {
+      console.error("Error fetching private user responses:", error);
     }
   };
 

@@ -112,11 +112,68 @@ export function registerPrivateUserRoutes(app: Express) {
         id: privateUser.id,
         name: privateUser.name,
         email: privateUser.email,
+        userId: privateUser.userId,
         accessibleForms: privateUser.accessibleForms,
       });
     } catch (error) {
       console.error("Private login error:", error);
       res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Get responses for private user's accessible forms
+  app.get("/api/private-user/responses", async (req, res) => {
+    try {
+      const privateUserId = req.headers["x-private-user-id"] as string;
+      if (!privateUserId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const privateUser = await (storage as any).getPrivateUser?.(privateUserId);
+      if (!privateUser) {
+        return res.status(404).json({ error: "Private user not found" });
+      }
+
+      const allResponses = [];
+      for (const formId of privateUser.accessibleForms || []) {
+        const form = await (storage as any).getForm?.(formId);
+        if (form && form.canPrivateUserViewResponses === "true") {
+          const responses = await (storage as any).getResponsesByFormId?.(formId);
+          allResponses.push(...(responses || []));
+        }
+      }
+      res.json(allResponses);
+    } catch (error) {
+      console.error("Error fetching private user responses:", error);
+      res.status(500).json({ error: "Failed to fetch responses" });
+    }
+  });
+
+  // Get responses for specific form (private user)
+  app.get("/api/private-user/forms/:id/responses", async (req, res) => {
+    try {
+      const privateUserId = req.headers["x-private-user-id"] as string;
+      const formId = req.params.id;
+
+      if (!privateUserId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const privateUser = await (storage as any).getPrivateUser?.(privateUserId);
+      if (!privateUser || !privateUser.accessibleForms?.includes(formId)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const form = await (storage as any).getForm?.(formId);
+      if (!form || form.canPrivateUserViewResponses !== "true") {
+        return res.status(403).json({ error: "Cannot view responses for this form" });
+      }
+
+      const responses = await (storage as any).getResponsesByFormId?.(formId);
+      res.json(responses);
+    } catch (error) {
+      console.error("Error fetching form responses:", error);
+      res.status(500).json({ error: "Failed to fetch responses" });
     }
   });
 }
