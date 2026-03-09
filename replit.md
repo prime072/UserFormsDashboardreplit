@@ -51,11 +51,26 @@ Preferred communication style: Simple, everyday language.
 - **PDF**: jsPDF for PDF generation
 - **WhatsApp**: Custom message formatting for share links
 
+## Login & Authentication Status
+
+### Fixed Issues (Session 2)
+- **Admin Login**: Now uses fallback credentials (admin/admin123) if VITE_ADMIN_USERNAME/VITE_ADMIN_PASSWORD env vars not set
+- **User Authentication**: `/api/auth/login` and `/api/auth/signup` endpoints fully implemented
+- **User Lookup**: `getUserByEmail()` searches by both email and username for flexibility
+- **Route Registration**: Auth routes now properly registered via `registerAuthRoutes()` in server/index.ts
+- **Frontend**: Auth context handles login/signup flow with proper error handling
+
+### Authentication Flow
+- Users sign up with email/password/firstName → endpoint validates → password hashed with bcrypt → user stored in MongoDB
+- Login endpoint finds user, verifies password, returns user object → stored in sessionStorage (key: "formflow_user")
+- Private users redirect to `/dashboard` after login
+- Admin login uses client-side credential check against env vars (or defaults)
+
 ## External Dependencies
 
 ### Database
-- **Neon Database**: Serverless PostgreSQL (`@neondatabase/serverless`)
-- **Connection**: Requires `DATABASE_URL` environment variable
+- **MongoDB**: Document database (requires MONGODB_URI env var)
+- **Connection**: Serverless MongoDB stored in env
 
 ### Frontend Libraries
 - **Charts**: Recharts for analytics visualizations

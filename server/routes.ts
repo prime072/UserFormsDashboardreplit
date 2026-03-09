@@ -1,7 +1,6 @@
-import { createServer, type Server } from "http";
 import express, { type Request, type Response, NextFunction } from "express";
 import { storage } from "./storage";
-import { insertFormSchema, insertResponseSchema, insertUserSchema } from "@shared/schema";
+import { insertFormSchema, insertResponseSchema } from "@shared/schema";
 import { z } from "zod";
 
 function getUserId(req: Request): string {
@@ -16,8 +15,7 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-export async function registerRoutes(app: express.Express): Promise<Server> {
-  const httpServer = createServer(app);
+export async function registerRoutes(app: express.Express): Promise<void> {
 
   // Form Routes
   app.get("/api/forms", isAuthenticated, async (req, res) => {
@@ -210,6 +208,4 @@ export async function registerRoutes(app: express.Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete database" });
     }
   });
-
-  return httpServer;
 }
