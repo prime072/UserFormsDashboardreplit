@@ -59,12 +59,20 @@ Preferred communication style: Simple, everyday language.
 - **User Lookup**: `getUserByEmail()` searches by both email and username for flexibility
 - **Route Registration**: Auth routes now properly registered via `registerAuthRoutes()` in server/index.ts
 - **Frontend**: Auth context handles login/signup flow with proper error handling
+- **Response Endpoints**: Added `/api/user/responses`, `/api/user/total-responses`, and `/api/forms/:id/stats` endpoints
+- **Error Handling**: Improved error messages in form-context.tsx and dashboard.tsx to show status codes and actual error details
 
 ### Authentication Flow
 - Users sign up with email/password/firstName → endpoint validates → password hashed with bcrypt → user stored in MongoDB
 - Login endpoint finds user, verifies password, returns user object → stored in sessionStorage (key: "formflow_user")
 - Private users redirect to `/dashboard` after login
 - Admin login uses client-side credential check against env vars (or defaults)
+
+### Response Dashboard
+- `/api/user/responses` - fetches all responses for user's forms
+- `/api/user/total-responses` - fetches count of total responses across all user forms
+- `/api/forms/:id/stats` - fetches statistics for a specific form
+- All endpoints properly authenticated with x-user-id header
 
 ## External Dependencies
 

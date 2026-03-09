@@ -47,12 +47,14 @@ export default function Dashboard() {
       const response = await fetch("/api/user/total-responses", {
         headers: { "x-user-id": user.id },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setLiveResponses(data.totalResponses);
+      if (!response.ok) {
+        console.error("Failed to fetch live responses:", response.status, response.statusText);
+        return;
       }
+      const data = await response.json();
+      setLiveResponses(data?.totalResponses || 0);
     } catch (error) {
-      console.error("Error fetching live responses:", error);
+      console.error("Error fetching live responses:", error instanceof Error ? error.message : error);
     }
   };
 

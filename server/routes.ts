@@ -149,6 +149,59 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
+  // User Responses Routes
+  app.get("/api/user/responses", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const forms = await storage.getFormsByUserId(userId);
+      const allResponses = [];
+      for (const form of forms) {
+        const responses = await storage.getResponsesByFormId(form.id);
+        allResponses.push(...responses);
+      }
+      res.json(allResponses);
+    } catch (error) {
+      console.error("Error fetching user responses:", error);
+      res.status(500).json({ message: "Failed to fetch responses" });
+    }
+  });
+
+  app.get("/api/user/total-responses", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const forms = await storage.getFormsByUserId(userId);
+      let totalCount = 0;
+      for (const form of forms) {
+        const count = await storage.getResponseCount(form.id);
+        totalCount += count;
+      }
+      res.json({ totalResponses: totalCount });
+    } catch (error) {
+      console.error("Error fetching total responses:", error);
+      res.status(500).json({ message: "Failed to fetch total responses" });
+    }
+  });
+
+  // Form Stats
+  app.get("/api/forms/:id/stats", async (req, res) => {
+    try {
+      const formId = req.params.id;
+      const form = await storage.getForm(formId);
+      if (!form) return res.status(404).json({ message: "Form not found" });
+      
+      const responseCount = await storage.getResponseCount(formId);
+      res.json({
+        formId,
+        responseCount,
+        createdAt: form.createdAt,
+        updatedAt: form.updatedAt,
+      });
+    } catch (error) {
+      console.error("Error fetching form stats:", error);
+      res.status(500).json({ message: "Failed to fetch form stats" });
+    }
+  });
+
   // Database Management Routes
   app.get("/api/forms-database", isAuthenticated, async (req, res) => {
     try {

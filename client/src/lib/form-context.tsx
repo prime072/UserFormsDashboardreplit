@@ -254,12 +254,14 @@ export function FormProvider({ children }: { children: ReactNode }) {
           "x-user-id": user.id,
         },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setResponses(data);
+      if (!response.ok) {
+        console.error("Failed to fetch responses:", response.status, response.statusText);
+        return;
       }
+      const data = await response.json();
+      setResponses(data || []);
     } catch (error) {
-      console.error("Error fetching all responses:", error);
+      console.error("Error fetching all responses:", error instanceof Error ? error.message : error);
     }
   };
 
