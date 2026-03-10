@@ -91,7 +91,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
       for (const cell of allCells) {
         if (cell.type === "lookup" && cell.lookupConfig) {
           try {
-            const val = await resolveLookup(cell.lookupConfig, data);
+            const val = await resolveLookup(cell.lookupConfig, data, lookups);
             lookups[cell.id] = val;
           } catch (err) {
             lookups[cell.id] = "0";
@@ -104,7 +104,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
         if ((cell.type === "date_calc" || cell.type === "hmr_calc") && cell.calcConfig) {
           if (cell.calcConfig.lookup1) {
             try {
-              const val = await resolveLookup(cell.calcConfig.lookup1, data);
+              const val = await resolveLookup(cell.calcConfig.lookup1, data, lookups);
               lookups[`${cell.id}_lk1`] = val;
             } catch (err) {
               lookups[`${cell.id}_lk1`] = "0";
@@ -112,7 +112,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
           }
           if (cell.calcConfig.lookup2) {
             try {
-              const val = await resolveLookup(cell.calcConfig.lookup2, data);
+              const val = await resolveLookup(cell.calcConfig.lookup2, data, lookups);
               lookups[`${cell.id}_lk2`] = val;
             } catch (err) {
               lookups[`${cell.id}_lk2`] = "0";
@@ -159,8 +159,8 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
           lookups[cell.id] = parseFloat(rawVal).toFixed(precision);
         } else if (cell.type === "date_calc" && cell.calcConfig) {
           let val1 = data[cell.calcConfig.field1];
-          if (cell.calcConfig.field1.startsWith('[[')) {
-            const refId = cell.calcConfig.field1.replace(/[\[\]]/g, '');
+          if (String(cell.calcConfig.field1).startsWith('[[')) {
+            const refId = String(cell.calcConfig.field1).replace(/[\[\]]/g, '');
             val1 = lookups[refId];
           } else if (cell.calcConfig.lookup1) {
             val1 = lookups[`${cell.id}_lk1`];
@@ -169,18 +169,22 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
           if (val1) {
             if (cell.calcConfig.field2 !== undefined) {
               let val2 = data[cell.calcConfig.field2];
-              if (cell.calcConfig.field2.startsWith('[[')) {
-                const refId = cell.calcConfig.field2.replace(/[\[\]]/g, '');
+              if (String(cell.calcConfig.field2).startsWith('[[')) {
+                const refId = String(cell.calcConfig.field2).replace(/[\[\]]/g, '');
                 val2 = lookups[refId];
               } else if (cell.calcConfig.lookup2) {
                 val2 = lookups[`${cell.id}_lk2`];
               }
 
-              if (val2) {
+              if (val1 && val2) {
                 const d1 = new Date(val1);
                 const d2 = new Date(val2);
-                const diff = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
-                lookups[cell.id] = String(cell.calcConfig.operator === "+" ? diff : -diff);
+                if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+                  const diff = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
+                  lookups[cell.id] = String(cell.calcConfig.operator === "+" ? diff : -diff);
+                } else {
+                  lookups[cell.id] = "Invalid Date";
+                }
               }
             } else {
               const amount = parseInt(cell.calcConfig.value || "1");
@@ -189,8 +193,8 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
           }
         } else if (cell.type === "hmr_calc" && cell.calcConfig) {
           let val1 = data[cell.calcConfig.field1];
-          if (cell.calcConfig.field1.startsWith('[[')) {
-            const refId = cell.calcConfig.field1.replace(/[\[\]]/g, '');
+          if (String(cell.calcConfig.field1).startsWith('[[')) {
+            const refId = String(cell.calcConfig.field1).replace(/[\[\]]/g, '');
             val1 = lookups[refId];
           } else if (cell.calcConfig.lookup1) {
             val1 = lookups[`${cell.id}_lk1`];
@@ -199,14 +203,14 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
           if (val1) {
             if (cell.calcConfig.field2 !== undefined) {
               let val2 = data[cell.calcConfig.field2];
-              if (cell.calcConfig.field2.startsWith('[[')) {
-                const refId = cell.calcConfig.field2.replace(/[\[\]]/g, '');
+              if (String(cell.calcConfig.field2).startsWith('[[')) {
+                const refId = String(cell.calcConfig.field2).replace(/[\[\]]/g, '');
                 val2 = lookups[refId];
               } else if (cell.calcConfig.lookup2) {
                 val2 = lookups[`${cell.id}_lk2`];
               }
 
-              if (val2) {
+              if (val1 && val2) {
                 const m1 = hmrToMinutes(String(val1));
                 const m2 = hmrToMinutes(String(val2));
                 const diff = cell.calcConfig.operator === "+" ? m1 + m2 : m1 - m2;
@@ -215,7 +219,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
             } else {
               const amount = parseInt(cell.calcConfig.value || "1");
               const minutes = cell.calcConfig.unit === "minutes" ? amount : amount * 60;
-              lookups[cell.id] = calculateHmr(String(val1), cell.calcConfig.operator === "+" ? minutes : -minutes);
+              lookups[cell.id] = calculateHmr(String(val1), cell.calcConfig.operator === "+" ? minutes : -amount);
             }
           }
         }
