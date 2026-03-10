@@ -313,6 +313,14 @@ export class MongoDBStorage implements IStorage {
     return rest as Response;
   }
 
+  async getResponse(id: string): Promise<Response | undefined> {
+    await this.connect();
+    const doc = await ResponseModel.findOne({ id }).lean();
+    if (!doc) return undefined;
+    const { _id, ...rest } = doc as any;
+    return rest as Response;
+  }
+
   async getResponsesByFormId(formId: string): Promise<Response[]> {
     await this.connect();
     const docs = await ResponseModel.find({ formId })

@@ -72,7 +72,9 @@ Preferred communication style: Simple, everyday language.
 - `/api/user/responses` - fetches all responses for user's forms
 - `/api/user/total-responses` - fetches count of total responses across all user forms
 - `/api/forms/:id/stats` - fetches statistics for a specific form
-- All endpoints properly authenticated with x-user-id header
+- `/api/responses/:id` - fetches a single response (used for confirmation page)
+- `/api/forms/:id/data` - fetches all response data for a form (used for lookups)
+- All endpoints properly authenticated with x-user-id header where appropriate
 
 ### Private User Response Access
 - Private users can view responses for forms they have access to (if owner enables `canPrivateUserViewResponses`)

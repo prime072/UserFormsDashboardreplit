@@ -140,6 +140,43 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
+  app.get("/api/responses/:id", async (req, res) => {
+    try {
+      const response = await storage.getResponse(req.params.id);
+      if (!response) return res.status(404).json({ message: "Response not found" });
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch response" });
+    }
+  });
+
+  app.patch("/api/responses/:id", async (req, res) => {
+    try {
+      const response = await storage.updateResponse(req.params.id, req.body.data);
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update response" });
+    }
+  });
+
+  app.delete("/api/responses/:id", async (req, res) => {
+    try {
+      await storage.deleteResponse(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete response" });
+    }
+  });
+
+  app.get("/api/forms/:id/data", async (req, res) => {
+    try {
+      const responses = await storage.getResponsesByFormId(req.params.id);
+      res.json(responses);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch form data" });
+    }
+  });
+
   app.post("/api/responses", async (req, res) => {
     try {
       const validatedData = insertResponseSchema.parse(req.body);
