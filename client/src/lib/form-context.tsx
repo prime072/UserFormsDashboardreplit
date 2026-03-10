@@ -196,10 +196,10 @@ type FormContextType = {
     data: any,
   ) => Promise<{ submissionId: string }>;
   getFormResponses: (formId: string) => FormResponse[];
-  updateResponse: (responseId: string, data: Record<string, any>) => void;
-  deleteResponse: (responseId: string) => void;
   fetchFormResponses: (formId: string) => Promise<void>;
   fetchUserDatabases: () => Promise<UserDatabase[]>;
+  updateResponse: (responseId: string, data: Record<string, any>) => void;
+  deleteResponse: (responseId: string) => void;
   resolveLookup: (
     lookupConfig: {
       formId: string;

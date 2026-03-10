@@ -93,6 +93,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
       const updatedForm = await storage.updateForm(req.params.id, updateDataWithExtras);
       res.json(updatedForm);
     } catch (error) {
+      console.error("Error updating form:", error);
       res.status(500).json({ message: "Failed to update form" });
     }
   });

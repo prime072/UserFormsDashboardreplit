@@ -19,7 +19,7 @@ export default function FormBuilder() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute("/forms/:id/edit");
   const { toast } = useToast();
-  const { addForm, getForm, updateForm } = useForms();
+  const { addForm, getForm, updateForm, fetchUserDatabases } = useForms();
   const { isSuspended } = useAuth();
   
   const isEditing = match && params?.id;
@@ -37,6 +37,8 @@ export default function FormBuilder() {
   const [whatsappFormat, setWhatsappFormat] = useState("");
   const [gridConfig, setGridConfig] = useState<GridConfig>({ headers: [], rows: [] });
   const [userDatabases, setUserDatabases] = useState<any[]>([]);
+  const [allowEditing, setAllowEditing] = useState(true);
+  const [canPrivateUserViewResponses, setCanPrivateUserViewResponses] = useState(false);
 
   useEffect(() => {
     const loadUserDBs = async () => {
