@@ -52,6 +52,7 @@ const responseSchema = new mongoose.Schema({
   formId: String,
   data: mongoose.Schema.Types.Mixed,
   submittedAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
 const userDatabaseSchema = new mongoose.Schema({
@@ -313,12 +314,22 @@ export class MongoDBStorage implements IStorage {
     return rest as Response;
   }
 
-  async getResponse(id: string): Promise<Response | undefined> {
+  async updateResponse(id: string, data: any): Promise<Response | undefined> {
     await this.connect();
-    const doc = await ResponseModel.findOne({ id }).lean();
+    const doc = await ResponseModel.findOneAndUpdate(
+      { id },
+      { data, updatedAt: new Date() },
+      { new: true }
+    ).lean();
     if (!doc) return undefined;
     const { _id, ...rest } = doc as any;
     return rest as Response;
+  }
+
+  async deleteResponse(id: string): Promise<boolean> {
+    await this.connect();
+    const result = await ResponseModel.deleteOne({ id });
+    return result.deletedCount > 0;
   }
 
   async getResponsesByFormId(formId: string): Promise<Response[]> {

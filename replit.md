@@ -68,13 +68,19 @@ Preferred communication style: Simple, everyday language.
 - Private users redirect to `/dashboard` after login
 - Admin login uses client-side credential check against env vars (or defaults)
 
-### Response Dashboard
+### Response Dashboard & Edit Response
 - `/api/user/responses` - fetches all responses for user's forms
 - `/api/user/total-responses` - fetches count of total responses across all user forms
 - `/api/forms/:id/stats` - fetches statistics for a specific form
-- `/api/responses/:id` - fetches a single response (used for confirmation page)
+- `/api/responses/:id` - fetches a single response (GET for viewing, PATCH for updating, DELETE for removing)
 - `/api/forms/:id/data` - fetches all response data for a form (used for lookups)
+- Edit response feature: appending `?edit={submissionId}` to form URL loads existing response data, changes save via PATCH to `/api/responses/:id`
 - All endpoints properly authenticated with x-user-id header where appropriate
+
+### Fixed Issues (Session 3)
+- **Edit Response Bug**: Added missing `updateResponse()` and `deleteResponse()` methods to MongoDB storage
+- **Response Schema**: Added `updatedAt` field to responseSchema in mongo-storage.ts
+- **Response CRUD**: All response endpoints (GET, PATCH, DELETE) now fully functional for all field types
 
 ### Private User Response Access
 - Private users can view responses for forms they have access to (if owner enables `canPrivateUserViewResponses`)
