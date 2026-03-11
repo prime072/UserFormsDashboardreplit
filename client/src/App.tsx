@@ -19,6 +19,7 @@ import AdminLogin from "@/pages/admin-login";
 import AdminDashboard from "@/pages/admin-dashboard";
 import PrivateUserDashboard from "@/pages/private-user-dashboard";
 import PrivateUserLogin from "@/pages/private-user-login";
+import PrivateUserResponses from "@/pages/private-user-responses";
 import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
 import DatabaseManagement from "@/pages/database-management";
@@ -98,6 +99,9 @@ function Router() {
       <Route path="/private-login" component={PrivateUserLogin} />
       <Route path="/private-users">
         <ProtectedRoute component={PrivateUserDashboard} />
+      </Route>
+      <Route path="/private/forms/:id/responses">
+        <ProtectedRoute component={PrivateUserResponses} />
       </Route>
       
       {/* Public Route - No Protection needed */}

@@ -222,13 +222,13 @@ export default function PrivateUserDashboard() {
                           </label>
                           {selectedUserAccess[privateUser.id]?.includes(form.id) && (
                             <div className="ml-6 mt-1 flex items-center gap-2">
-                              <Link href={`/forms/${form.id}/responses`}>
+                              <Link href={`/private/forms/${form.id}/responses`}>
                                 <Button variant="link" size="sm" className="h-auto p-0 text-xs text-blue-600">
                                   <Eye className="w-3 h-3 mr-1" />
-                                  View Responses Link
+                                  View Responses
                                 </Button>
                               </Link>
-                              <span className="text-[10px] text-muted-foreground">(Requires "Private users can view responses" enabled in Form Settings)</span>
+                              <span className="text-[10px] text-muted-foreground">(Private user responses for this form)</span>
                             </div>
                           )}
                         </div>
