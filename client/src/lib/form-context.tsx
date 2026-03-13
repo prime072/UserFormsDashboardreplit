@@ -824,8 +824,19 @@ export async function generateDocx(
     const tableRows = Object.entries(responseData)
       .filter(([key]) => key !== "id" && key !== "submittedAt")
       .map(
-        ([key, value]) =>
-          new TableRow({
+        ([key, value]) => {
+          const textValue = Array.isArray(value) 
+            ? value.map((item: any, idx: number) => {
+                const kv = Object.entries(item)
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join(", ");
+                return `${idx + 1}. ${kv}`;
+              }).join("\n")
+            : String(value || "");
+          
+          const textLines = textValue.split("\n");
+          
+          return new TableRow({
             children: [
               new TableCell({
                 children: [
@@ -834,9 +845,17 @@ export async function generateDocx(
                   }),
                 ],
               }),
-              new TableCell({ children: [new Paragraph(String(value || ""))] }),
+              new TableCell({
+                children: textLines.map(
+                  (line) =>
+                    new Paragraph({
+                      children: [new TextRun({ text: line })],
+                    }),
+                ),
+              }),
             ],
-          }),
+          });
+        },
       );
 
     docRows.push(
