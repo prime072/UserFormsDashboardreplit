@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Lock, Plus, Trash2 } from "lucide-react";
+import { Loader2, Send, Lock, Plus, Trash2, Eye } from "lucide-react";
 
 export default function PublicForm() {
   const [match, params] = useRoute("/s/:id");
@@ -175,7 +175,20 @@ export default function PublicForm() {
     <div className="min-h-screen bg-slate-50 py-12 px-4">
       <Card className="max-w-2xl mx-auto shadow-lg">
         <CardHeader className="bg-primary text-primary-foreground rounded-t-lg">
-          <CardTitle className="text-2xl">{form.title}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl">{form.title}</CardTitle>
+            {privateUser && form.canPrivateUserViewResponses === "true" && (
+              <Button 
+                size="sm" 
+                variant="secondary"
+                onClick={() => setLocation(`/private/forms/${formId}/responses`)}
+                className="gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                View My Responses
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="pt-8">
           <form onSubmit={handleSubmit} className="space-y-6">

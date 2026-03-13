@@ -50,9 +50,17 @@ export default function PrivateUserLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <Card className="w-full max-w-md shadow-xl border-slate-100">
-        <CardHeader className="space-y-1 text-center">
+        <CardHeader className="space-y-2 text-center">
           <CardTitle className="text-2xl font-bold">Private Access</CardTitle>
-          <CardDescription>Enter your credentials to access private forms</CardDescription>
+          <CardDescription>Enter your credentials to access private forms and view responses</CardDescription>
+          <div className="pt-2 text-xs text-slate-600 space-y-1 bg-slate-50 rounded p-3 mt-2">
+            <p className="font-semibold">After login, you can:</p>
+            <ul className="text-left space-y-1">
+              <li>✓ Fill out assigned forms</li>
+              <li>✓ View your responses on the form page</li>
+              <li>✓ Access response summary on confirmation page</li>
+            </ul>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (

@@ -8,6 +8,7 @@ import {
   Download,
   FileJson,
   File,
+  Eye,
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
@@ -79,6 +80,8 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
   const [, setLocation] = useLocation();
   const data = response.data;
   const grid = form.gridConfig;
+  const privateUserSession = sessionStorage.getItem("private_user");
+  const privateUser = privateUserSession ? JSON.parse(privateUserSession) : null;
 
   useEffect(() => {
     const fetchLookups = async () => {
@@ -475,6 +478,16 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
             >
               Submit Another Response
             </Button>
+            {privateUser && form.canPrivateUserViewResponses === "true" && (
+              <Button 
+                variant="outline"
+                className="w-full border-blue-600 text-blue-600 hover:bg-blue-50"
+                onClick={() => setLocation(`/private/forms/${form.id}/responses`)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View All My Responses
+              </Button>
+            )}
             {form.gridConfig?.rows?.some((r: any) => r.cells.some((c: any) => c.type === 'link_button')) && (
               <div className="pt-4 border-t flex flex-col gap-2">
                 <Label className="text-xs text-slate-500 text-center">Quick Links</Label>

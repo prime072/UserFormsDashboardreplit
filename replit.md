@@ -86,13 +86,12 @@ Preferred communication style: Simple, everyday language.
 - Private users can view responses for forms they have access to (if owner enables `canPrivateUserViewResponses`)
 - `/api/private-user/responses` - fetches all responses for accessible forms (requires x-private-user-id header)
 - `/api/private-user/forms/:id/responses` - fetches responses for specific form (requires x-private-user-id header and form permission)
-- Private user dashboard at `/private-users` shows all responses for accessible forms
-- **How private users access responses**: 
-  1. Login at `/private-login` with credentials
-  2. Navigate to `/private-users` dashboard (shown in header/menu when logged in as private user)
-  3. Under each accessible form, click "View Responses" button → goes to `/private/forms/{formId}/responses`
+- **How private users access responses**:
+  1. Login at `/private-login` with credentials (see helpful tips about response access on login page)
+  2. On the form page, click "View My Responses" button (appears if owner enabled response viewing)
+  3. After submitting a response, click "View All My Responses" button on confirmation page
   4. Alternative: Directly access `/private/forms/{formId}/responses` if they know the form ID
-- Form owners can enable/disable private user response viewing on a per-form basis via form settings
+- Form owners enable/disable private user response viewing per form in form settings
 
 ## External Dependencies
 
