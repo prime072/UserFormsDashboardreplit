@@ -45,7 +45,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
   app.post("/api/forms", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, canPrivateUserViewResponses, ...bodyRest } = req.body;
+      const { visibility, confirmationStyle, confirmationText, gridConfig, gridConfigs, whatsappFormat, allowEditing, canPrivateUserViewResponses, ...bodyRest } = req.body;
       const validatedData = insertFormSchema.parse({
         ...bodyRest,
         userId,
@@ -56,6 +56,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
         confirmationStyle: confirmationStyle || "table",
         confirmationText,
         gridConfig,
+        gridConfigs,
         whatsappFormat,
         allowEditing: allowEditing ?? true,
         canPrivateUserViewResponses: canPrivateUserViewResponses || "false",
@@ -78,7 +79,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
       if (!form || form.userId !== userId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      const { visibility, confirmationStyle, confirmationText, gridConfig, whatsappFormat, allowEditing, canPrivateUserViewResponses, ...bodyRest } = req.body;
+      const { visibility, confirmationStyle, confirmationText, gridConfig, gridConfigs, whatsappFormat, allowEditing, canPrivateUserViewResponses, ...bodyRest } = req.body;
       const validatedData = insertFormSchema.partial().parse(bodyRest);
       const updateDataWithExtras = {
         ...validatedData,
@@ -86,6 +87,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
         ...(confirmationStyle !== undefined && { confirmationStyle }),
         ...(confirmationText !== undefined && { confirmationText }),
         ...(gridConfig !== undefined && { gridConfig }),
+        ...(gridConfigs !== undefined && { gridConfigs }),
         ...(whatsappFormat !== undefined && { whatsappFormat }),
         ...(allowEditing !== undefined && { allowEditing }),
         ...(canPrivateUserViewResponses !== undefined && { canPrivateUserViewResponses }),
