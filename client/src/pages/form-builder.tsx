@@ -36,6 +36,7 @@ export default function FormBuilder() {
   const [confirmationText, setConfirmationText] = useState("");
   const [whatsappFormat, setWhatsappFormat] = useState("");
   const [gridConfig, setGridConfig] = useState<GridConfig>({ headers: [], rows: [] });
+  const [gridConfigs, setGridConfigs] = useState<GridConfig[]>([]);
   const [userDatabases, setUserDatabases] = useState<any[]>([]);
   const [allowEditing, setAllowEditing] = useState(true);
   const [canPrivateUserViewResponses, setCanPrivateUserViewResponses] = useState(false);
@@ -60,6 +61,7 @@ export default function FormBuilder() {
         setConfirmationText(existingForm.confirmationText || "");
         setWhatsappFormat(existingForm.whatsappFormat || "");
         setGridConfig(existingForm.gridConfig || { headers: [], rows: [] });
+        setGridConfigs(existingForm.gridConfigs || []);
         setAllowEditing(existingForm.allowEditing ?? true);
         setCanPrivateUserViewResponses(existingForm.canPrivateUserViewResponses === "true");
       }
@@ -137,11 +139,12 @@ export default function FormBuilder() {
     }
 
     try {
+      const finalGridConfigs = gridConfigs.length > 0 ? gridConfigs : (gridConfig.headers.length > 0 ? [gridConfig] : []);
       if (isEditing && formId) {
-        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, canPrivateUserViewResponses ? "true" : "false");
+        await updateForm(formId, title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, canPrivateUserViewResponses ? "true" : "false", finalGridConfigs);
         toast({ title: "Form Updated", description: "Your changes have been saved." });
       } else {
-        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, canPrivateUserViewResponses ? "true" : "false");
+        await addForm(title, fields, outputFormats, visibility, confirmationStyle, confirmationText, undefined, whatsappFormat, gridConfig, allowEditing, canPrivateUserViewResponses ? "true" : "false", finalGridConfigs);
         toast({ title: "Form Created", description: "Your form has been created successfully." });
       }
       setTimeout(() => setLocation("/forms"), 1000);
@@ -244,15 +247,54 @@ export default function FormBuilder() {
             </div>
           </div>
 
-          <OutputSettings 
-            selectedFormats={outputFormats}
-            onChange={setOutputFormats}
-            fields={fields}
-            gridConfig={gridConfig}
-            onGridConfigChange={setGridConfig}
-            whatsappFormat={whatsappFormat}
-            onWhatsappFormatChange={setWhatsappFormat}
-          />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Output Sections</h3>
+              <Button 
+                size="sm" 
+                onClick={() => setGridConfigs([...gridConfigs, { headers: [], rows: [] }])}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add Section
+              </Button>
+            </div>
+            {gridConfigs.map((grid, idx) => (
+              <div key={idx} className="border rounded-lg p-4 relative">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="absolute top-2 right-2 h-6 w-6"
+                  onClick={() => setGridConfigs(gridConfigs.filter((_, i) => i !== idx))}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <OutputSettings 
+                  selectedFormats={outputFormats}
+                  onChange={setOutputFormats}
+                  fields={fields}
+                  gridConfig={grid}
+                  onGridConfigChange={(updated) => {
+                    const newConfigs = [...gridConfigs];
+                    newConfigs[idx] = updated;
+                    setGridConfigs(newConfigs);
+                  }}
+                  whatsappFormat={whatsappFormat}
+                  onWhatsappFormatChange={setWhatsappFormat}
+                />
+              </div>
+            ))}
+            {gridConfigs.length === 0 && (
+              <OutputSettings 
+                selectedFormats={outputFormats}
+                onChange={setOutputFormats}
+                fields={fields}
+                gridConfig={gridConfig}
+                onGridConfigChange={setGridConfig}
+                whatsappFormat={whatsappFormat}
+                onWhatsappFormatChange={setWhatsappFormat}
+              />
+            )}
+          </div>
         </div>
 
         <div className="space-y-6">

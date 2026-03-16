@@ -93,6 +93,15 @@ Preferred communication style: Simple, everyday language.
   4. Alternative: Directly access `/private/forms/{formId}/responses` if they know the form ID
 - Form owners enable/disable private user response viewing per form in form settings
 
+### Multiple Output Sections Feature (Session 4)
+- **Confirmation Page Multiple Tables/Sections**: Users can now add multiple output tables, text paragraphs, or mixed sections to the confirmation page
+- Form builder has "Output Sections" area with "Add Section" button to create multiple gridConfigs
+- Each section can have its own table name, text above/below, headers, columns, rows, and cell configurations
+- Submission confirmation page renders all sections in order
+- `gridConfigs` is now an array; backward compatible with legacy `gridConfig` (single table)
+- All lookups, formulas, date/HMR calculations work across all sections
+- Sections can be deleted via trash icon on each section in form builder
+
 ## External Dependencies
 
 ### Database

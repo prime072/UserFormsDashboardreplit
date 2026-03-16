@@ -27,9 +27,6 @@ export default function SubmissionConfirmation() {
   const [form, setForm] = useState<any>(null);
   const [response, setResponse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [resolvedLookups, setResolvedLookups] = useState<
-    Record<string, string>
-  >({});
   const { resolveLookup } = useForms();
 
   const formId = params?.id;
@@ -76,162 +73,164 @@ export default function SubmissionConfirmation() {
 }
 
 function SubmissionConfirmationContent({ form, response, resolveLookup, submissionId }: { form: any, response: any, resolveLookup: any, submissionId?: string }) {
-  const [resolvedLookups, setResolvedLookups] = useState<Record<string, string>>({});
+  const [resolvedLookups, setResolvedLookups] = useState<Record<string, Record<string, string>>>({});
   const [, setLocation] = useLocation();
   const data = response.data;
-  const grid = form.gridConfig;
+  const grids = form.gridConfigs && form.gridConfigs.length > 0 ? form.gridConfigs : (form.gridConfig ? [form.gridConfig] : []);
   const privateUserSession = sessionStorage.getItem("private_user");
   const privateUser = privateUserSession ? JSON.parse(privateUserSession) : null;
 
   useEffect(() => {
     const fetchLookups = async () => {
-      if (!grid || !grid.rows) return;
-      const lookups: Record<string, string> = {};
-      const allCells: any[] = [];
-      grid.rows.forEach((r: any) => r.cells.forEach((c: any) => allCells.push(c)));
-
-      // First pass: Resolve lookups
-      for (const cell of allCells) {
-        if (cell.type === "lookup" && cell.lookupConfig) {
-          try {
-            const val = await resolveLookup(cell.lookupConfig, data, lookups);
-            lookups[cell.id] = val;
-          } catch (err) {
-            lookups[cell.id] = "0";
-          }
-        }
-      }
-
-      // Add calculation lookups support
-      for (const cell of allCells) {
-        if ((cell.type === "date_calc" || cell.type === "hmr_calc") && cell.calcConfig) {
-          if (cell.calcConfig.lookup1) {
-            try {
-              const val = await resolveLookup(cell.calcConfig.lookup1, data, lookups);
-              lookups[`${cell.id}_lk1`] = val;
-            } catch (err) {
-              lookups[`${cell.id}_lk1`] = "0";
-            }
-          }
-          if (cell.calcConfig.lookup2) {
-            try {
-              const val = await resolveLookup(cell.calcConfig.lookup2, data, lookups);
-              lookups[`${cell.id}_lk2`] = val;
-            } catch (err) {
-              lookups[`${cell.id}_lk2`] = "0";
-            }
-          }
-        }
-      }
-
-      // Second pass: Resolve formulas
-      const resolveFormula = (expression: string): string => {
-        let evaluated = expression;
+      const allLookups: Record<string, Record<string, string>> = {};
+      
+      for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
+        const grid = grids[gridIdx];
+        if (!grid || !grid.rows) continue;
         
-        // Replace variables {{Field}}
-        Object.entries(data).forEach(([key, val]) => {
-          // Ensure we treat numeric strings as numbers in eval
-          const numericVal = isNaN(Number(val)) ? 0 : Number(val);
-          evaluated = evaluated.replace(new RegExp(`{{${key}}}`, "g"), String(numericVal));
-        });
+        const lookups: Record<string, string> = {};
+        const allCells: any[] = [];
+        grid.rows.forEach((r: any) => r.cells.forEach((c: any) => allCells.push(c)));
 
-        // Replace lookup references [[CellID]]
-        Object.entries(lookups).forEach(([id, val]) => {
-          const numericVal = isNaN(Number(val)) ? 0 : Number(val);
-          evaluated = evaluated.replace(new RegExp(`\\[\\[${id}\\]\\]`, "g"), String(numericVal));
-        });
+        // First pass: Resolve lookups
+        for (const cell of allCells) {
+          if (cell.type === "lookup" && cell.lookupConfig) {
+            try {
+              const val = await resolveLookup(cell.lookupConfig, data, lookups);
+              lookups[cell.id] = val;
+            } catch (err) {
+              lookups[cell.id] = "0";
+            }
+          }
+        }
 
-        try {
-          // Basic math evaluation safely
-          // Remove any non-math characters for security
-          const cleanExpr = evaluated.replace(/[^0-9+\-*/().\s]/g, "");
-          if (!cleanExpr) return "0";
+        // Add calculation lookups support
+        for (const cell of allCells) {
+          if ((cell.type === "date_calc" || cell.type === "hmr_calc") && cell.calcConfig) {
+            if (cell.calcConfig.lookup1) {
+              try {
+                const val = await resolveLookup(cell.calcConfig.lookup1, data, lookups);
+                lookups[`${cell.id}_lk1`] = val;
+              } catch (err) {
+                lookups[`${cell.id}_lk1`] = "0";
+              }
+            }
+            if (cell.calcConfig.lookup2) {
+              try {
+                const val = await resolveLookup(cell.calcConfig.lookup2, data, lookups);
+                lookups[`${cell.id}_lk2`] = val;
+              } catch (err) {
+                lookups[`${cell.id}_lk2`] = "0";
+              }
+            }
+          }
+        }
+
+        // Second pass: Resolve formulas
+        const resolveFormula = (expression: string): string => {
+          let evaluated = expression;
           
-          const result = Function(`"use strict"; return (${cleanExpr})`)();
-          return isNaN(result) || !isFinite(result) ? "0" : String(result);
-        } catch (e) {
-          console.error("Formula eval error:", e);
-          return "0";
-        }
-      };
+          // Replace variables {{Field}}
+          Object.entries(data).forEach(([key, val]) => {
+            const numericVal = isNaN(Number(val)) ? 0 : Number(val);
+            evaluated = evaluated.replace(new RegExp(`{{${key}}}`, "g"), String(numericVal));
+          });
 
-      for (const cell of allCells) {
-        if (cell.type === "formula" && cell.formulaConfig) {
-          const rawVal = resolveFormula(cell.formulaConfig.expression);
-          const precision = cell.formulaConfig.precision ?? 2;
-          lookups[cell.id] = parseFloat(rawVal).toFixed(precision);
-        } else if (cell.type === "date_calc" && cell.calcConfig) {
-          let val1 = data[cell.calcConfig.field1];
-          if (String(cell.calcConfig.field1).startsWith('[[')) {
-            const refId = String(cell.calcConfig.field1).replace(/[\[\]]/g, '');
-            val1 = lookups[refId];
-          } else if (cell.calcConfig.lookup1) {
-            val1 = lookups[`${cell.id}_lk1`];
+          // Replace lookup references [[CellID]]
+          Object.entries(lookups).forEach(([id, val]) => {
+            const numericVal = isNaN(Number(val)) ? 0 : Number(val);
+            evaluated = evaluated.replace(new RegExp(`\\[\\[${id}\\]\\]`, "g"), String(numericVal));
+          });
+
+          try {
+            const cleanExpr = evaluated.replace(/[^0-9+\-*/().\s]/g, "");
+            if (!cleanExpr) return "0";
+            const result = Function(`"use strict"; return (${cleanExpr})`)();
+            return isNaN(result) || !isFinite(result) ? "0" : String(result);
+          } catch (e) {
+            return "0";
           }
+        };
 
-          if (val1) {
-            if (cell.calcConfig.field2 !== undefined) {
-              let val2 = data[cell.calcConfig.field2];
-              if (String(cell.calcConfig.field2).startsWith('[[')) {
-                const refId = String(cell.calcConfig.field2).replace(/[\[\]]/g, '');
-                val2 = lookups[refId];
-              } else if (cell.calcConfig.lookup2) {
-                val2 = lookups[`${cell.id}_lk2`];
-              }
+        for (const cell of allCells) {
+          if (cell.type === "formula" && cell.formulaConfig) {
+            const rawVal = resolveFormula(cell.formulaConfig.expression);
+            const precision = cell.formulaConfig.precision ?? 2;
+            lookups[cell.id] = parseFloat(rawVal).toFixed(precision);
+          } else if (cell.type === "date_calc" && cell.calcConfig) {
+            let val1 = data[cell.calcConfig.field1];
+            if (String(cell.calcConfig.field1).startsWith('[[')) {
+              const refId = String(cell.calcConfig.field1).replace(/[\[\]]/g, '');
+              val1 = lookups[refId];
+            } else if (cell.calcConfig.lookup1) {
+              val1 = lookups[`${cell.id}_lk1`];
+            }
 
-              if (val1 && val2) {
-                const d1 = new Date(val1);
-                const d2 = new Date(val2);
-                if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
-                  const diff = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
-                  lookups[cell.id] = String(cell.calcConfig.operator === "+" ? diff : -diff);
-                } else {
-                  lookups[cell.id] = "Invalid Date";
+            if (val1) {
+              if (cell.calcConfig.field2 !== undefined) {
+                let val2 = data[cell.calcConfig.field2];
+                if (String(cell.calcConfig.field2).startsWith('[[')) {
+                  const refId = String(cell.calcConfig.field2).replace(/[\[\]]/g, '');
+                  val2 = lookups[refId];
+                } else if (cell.calcConfig.lookup2) {
+                  val2 = lookups[`${cell.id}_lk2`];
                 }
+
+                if (val1 && val2) {
+                  const d1 = new Date(val1);
+                  const d2 = new Date(val2);
+                  if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+                    const diff = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
+                    lookups[cell.id] = String(cell.calcConfig.operator === "+" ? diff : -diff);
+                  } else {
+                    lookups[cell.id] = "Invalid Date";
+                  }
+                }
+              } else {
+                const amount = parseInt(cell.calcConfig.value || "1");
+                lookups[cell.id] = addDaysToDate(val1, cell.calcConfig.operator === "+" ? amount : -amount);
               }
-            } else {
-              const amount = parseInt(cell.calcConfig.value || "1");
-              lookups[cell.id] = addDaysToDate(val1, cell.calcConfig.operator === "+" ? amount : -amount);
             }
-          }
-        } else if (cell.type === "hmr_calc" && cell.calcConfig) {
-          let val1 = data[cell.calcConfig.field1];
-          if (String(cell.calcConfig.field1).startsWith('[[')) {
-            const refId = String(cell.calcConfig.field1).replace(/[\[\]]/g, '');
-            val1 = lookups[refId];
-          } else if (cell.calcConfig.lookup1) {
-            val1 = lookups[`${cell.id}_lk1`];
-          }
+          } else if (cell.type === "hmr_calc" && cell.calcConfig) {
+            let val1 = data[cell.calcConfig.field1];
+            if (String(cell.calcConfig.field1).startsWith('[[')) {
+              const refId = String(cell.calcConfig.field1).replace(/[\[\]]/g, '');
+              val1 = lookups[refId];
+            } else if (cell.calcConfig.lookup1) {
+              val1 = lookups[`${cell.id}_lk1`];
+            }
 
-          if (val1) {
-            if (cell.calcConfig.field2 !== undefined) {
-              let val2 = data[cell.calcConfig.field2];
-              if (String(cell.calcConfig.field2).startsWith('[[')) {
-                const refId = String(cell.calcConfig.field2).replace(/[\[\]]/g, '');
-                val2 = lookups[refId];
-              } else if (cell.calcConfig.lookup2) {
-                val2 = lookups[`${cell.id}_lk2`];
-              }
+            if (val1) {
+              if (cell.calcConfig.field2 !== undefined) {
+                let val2 = data[cell.calcConfig.field2];
+                if (String(cell.calcConfig.field2).startsWith('[[')) {
+                  const refId = String(cell.calcConfig.field2).replace(/[\[\]]/g, '');
+                  val2 = lookups[refId];
+                } else if (cell.calcConfig.lookup2) {
+                  val2 = lookups[`${cell.id}_lk2`];
+                }
 
-              if (val1 && val2) {
-                const m1 = hmrToMinutes(String(val1));
-                const m2 = hmrToMinutes(String(val2));
-                const diff = cell.calcConfig.operator === "+" ? m1 + m2 : m1 - m2;
-                lookups[cell.id] = minutesToHmr(diff);
+                if (val1 && val2) {
+                  const m1 = hmrToMinutes(String(val1));
+                  const m2 = hmrToMinutes(String(val2));
+                  const diff = cell.calcConfig.operator === "+" ? m1 + m2 : m1 - m2;
+                  lookups[cell.id] = minutesToHmr(diff);
+                }
+              } else {
+                const amount = parseInt(cell.calcConfig.value || "1");
+                const minutes = cell.calcConfig.unit === "minutes" ? amount : amount * 60;
+                lookups[cell.id] = calculateHmr(String(val1), cell.calcConfig.operator === "+" ? minutes : -minutes);
               }
-            } else {
-              const amount = parseInt(cell.calcConfig.value || "1");
-              const minutes = cell.calcConfig.unit === "minutes" ? amount : amount * 60;
-              lookups[cell.id] = calculateHmr(String(val1), cell.calcConfig.operator === "+" ? minutes : -amount);
             }
           }
         }
-      }
 
-      setResolvedLookups(lookups);
+        allLookups[gridIdx] = lookups;
+      }
+      setResolvedLookups(allLookups);
     };
     fetchLookups();
-  }, [grid, resolveLookup, data]);
+  }, [grids, resolveLookup, data]);
 
   const replaceVars = (text: string) => {
     let result = text || "";
@@ -251,6 +250,139 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
     return result;
   };
 
+  const GridDisplay = ({ grid, gridIdx }: { grid: any; gridIdx: number }) => {
+    const gridLookups = resolvedLookups[gridIdx] || {};
+    return (
+      <div className="space-y-4">
+        {grid?.textAbove && (
+          <p className="text-slate-600 whitespace-pre-wrap">
+            {replaceVars(grid.textAbove)}
+          </p>
+        )}
+        <div className="overflow-x-auto border rounded-lg bg-white">
+          {grid && grid.headers?.length > 0 ? (
+            <table className="w-full border-collapse">
+              <thead>
+                {grid.tableName && (
+                  <tr className="bg-slate-100">
+                    <th
+                      colSpan={grid.headers.length}
+                      className="p-4 border-b text-center font-bold text-lg text-slate-900"
+                    >
+                      {replaceVars(grid.tableName)}
+                    </th>
+                  </tr>
+                )}
+                {grid.showHeaders !== false && (
+                  <tr
+                    style={{
+                      backgroundColor: grid.headerColor || "#f8fafc",
+                    }}
+                  >
+                    {grid.headers.map((h: any, i: number) => (
+                      <th
+                        key={i}
+                        className="p-3 border-b border-r text-left text-sm font-bold last:border-r-0"
+                        style={{
+                          color: grid.headerTextColor || "#334155",
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                )}
+              </thead>
+              <tbody>
+                {grid.rows.map((row: any) => (
+                  <tr
+                    key={row.id}
+                    className={row.isFooter ? "bg-slate-50 font-semibold" : ""}
+                  >
+                    {row.cells.map((cell: any) => {
+                      let val = cell.value;
+                      if (cell.type === "variable") {
+                        const rawVal = data[cell.value];
+                        if (Array.isArray(rawVal)) {
+                          val = (
+                            <div className="space-y-1">
+                              {rawVal.map((item: any, idx: number) => (
+                                <div key={idx} className="text-xs border-b last:border-0 pb-1 mb-1">
+                                  {Object.entries(item).map(([k, v]) => (
+                                    <div key={k}><span className="font-semibold">{k}:</span> {String(v)}</div>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        } else {
+                          val = String(rawVal || "");
+                        }
+                      } else if (cell.type === "lookup" || cell.type === "formula" || cell.type === "date_calc" || cell.type === "hmr_calc") {
+                        val = gridLookups[cell.id] || "Loading...";
+                      }
+                      return (
+                        <td
+                          key={cell.id}
+                          className="p-3 border-b border-r text-sm last:border-r-0"
+                          colSpan={cell.colspan || 1}
+                          style={{
+                            backgroundColor: cell.color,
+                            color: cell.textColor || "#475569",
+                            fontSize: `${cell.fontSize || 14}px`,
+                            fontWeight: cell.bold
+                              ? "bold"
+                              : row.isFooter
+                                ? "semibold"
+                                : "normal",
+                            fontStyle: cell.italic ? "italic" : "normal",
+                          }}
+                        >
+                          {val}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-6 space-y-2">
+              {Object.entries(data).map(([key, val]) => (
+                <div
+                  key={key}
+                  className="flex justify-between border-b pb-2"
+                >
+                  <span className="font-medium">{key}:</span>
+                  <span>
+                    {Array.isArray(val) ? (
+                      <div className="text-right space-y-1">
+                        {val.map((item: any, idx: number) => (
+                          <div key={idx} className="text-xs text-slate-500">
+                            {Object.entries(item)
+                              .map(([k, v]) => `${k}: ${v}`)
+                              .join(", ")}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      String(val)
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {grid?.textBelow && (
+          <p className="text-slate-600 whitespace-pre-wrap">
+            {replaceVars(grid.textBelow)}
+          </p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center">
       <Card className="w-full max-w-2xl border-t-4 border-t-green-500 shadow-xl">
@@ -267,242 +399,79 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
               {replaceVars(form.confirmationText)}
             </div>
           ) : (
-            <div className="space-y-4">
-              {grid?.textAbove && (
-                <p className="text-slate-600 whitespace-pre-wrap">
-                  {replaceVars(grid.textAbove)}
-                </p>
-              )}
-              <div className="overflow-x-auto border rounded-lg bg-white">
-                {grid && grid.headers?.length > 0 ? (
-                  <table className="w-full border-collapse">
-                    <thead>
-                      {grid.tableName && (
-                        <tr className="bg-slate-100">
-                          <th
-                            colSpan={grid.headers.length}
-                            className="p-4 border-b text-center font-bold text-lg text-slate-900"
-                          >
-                            {replaceVars(grid.tableName)}
-                          </th>
-                        </tr>
-                      )}
-                      {grid.showHeaders !== false && (
-                        <tr
-                          style={{
-                            backgroundColor: grid.headerColor || "#f8fafc",
-                          }}
-                        >
-                          {grid.headers.map((h: any, i: number) => (
-                            <th
-                              key={i}
-                              className="p-3 border-b border-r text-left text-sm font-bold last:border-r-0"
-                              style={{
-                                color: grid.headerTextColor || "#334155",
-                              }}
-                            >
-                              {h}
-                            </th>
-                          ))}
-                        </tr>
-                      )}
-                    </thead>
-                    <tbody>
-                      {grid.rows.map((row: any) => (
-                        <tr
-                          key={row.id}
-                          className={
-                            row.isFooter ? "bg-slate-50 font-semibold" : ""
-                          }
-                        >
-                          {row.cells.map((cell: any) => {
-                            let val = cell.value;
-                            if (cell.type === "variable") {
-                              const rawVal = data[cell.value];
-                              if (Array.isArray(rawVal)) {
-                                // Handle Repeater Data in table display
-                                val = (
-                                  <div className="space-y-1">
-                                    {rawVal.map((item: any, idx: number) => (
-                                      <div key={idx} className="text-xs border-b last:border-0 pb-1 mb-1">
-                                        {Object.entries(item).map(([k, v]) => (
-                                          <div key={k}><span className="font-semibold">{k}:</span> {String(v)}</div>
-                                        ))}
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              } else {
-                                val = String(rawVal || "");
-                              }
-                            } else if (cell.type === "lookup" || cell.type === "formula" || cell.type === "date_calc" || cell.type === "hmr_calc") {
-                              val = resolvedLookups[cell.id] || "Loading...";
-                            }
-                            return (
-                              <td
-                                key={cell.id}
-                                className="p-3 border-b border-r text-sm last:border-r-0"
-                                colSpan={cell.colspan || 1}
-                                style={{
-                                  backgroundColor: cell.color,
-                                  color: cell.textColor || "#475569",
-                                  fontSize: `${cell.fontSize || 14}px`,
-                                  fontWeight: cell.bold
-                                    ? "bold"
-                                    : row.isFooter
-                                      ? "semibold"
-                                      : "normal",
-                                  fontStyle: cell.italic ? "italic" : "normal",
-                                }}
-                              >
-                                {val}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="p-6 space-y-2">
-                    {Object.entries(data).map(([key, val]) => (
-                      <div
-                        key={key}
-                        className="flex justify-between border-b pb-2"
-                      >
-                        <span className="font-medium">{key}:</span>
-                        <span>
-                          {Array.isArray(val) ? (
-                            <div className="text-right space-y-1">
-                              {val.map((item: any, idx: number) => (
-                                <div key={idx} className="text-xs text-slate-500">
-                                  {Object.entries(item)
-                                    .map(([k, v]) => `${k}: ${v}`)
-                                    .join(", ")}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            String(val)
-                          )}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {grid?.textBelow && (
-                <p className="text-slate-600 whitespace-pre-wrap">
-                  {replaceVars(grid.textBelow)}
-                </p>
-              )}
+            <div className="space-y-8">
+              {grids.map((grid: any, idx: number) => (
+                <GridDisplay key={idx} grid={grid} gridIdx={idx} />
+              ))}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            {form.outputFormats?.includes("excel") && (
-              <Button
-                variant="outline"
-                onClick={() => generateExcel(form.title, data)}
-              >
-                <Download className="w-4 h-4 mr-2" /> Excel
-              </Button>
-            )}
-            {form.outputFormats?.includes("pdf") && (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  generatePdf(
-                    form.title,
-                    data,
-                    undefined,
-                    form.gridConfig,
-                    resolveLookup,
-                    resolvedLookups
-                  )
-                }
-              >
-                <File className="w-4 h-4 mr-2" /> PDF
-              </Button>
-            )}
-            {form.outputFormats?.includes("docx") && (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  generateDocx(
-                    form.title,
-                    data,
-                    undefined,
-                    form.gridConfig,
-                    resolveLookup,
-                    resolvedLookups
-                  )
-                }
-              >
-                <FileJson className="w-4 h-4 mr-2" /> Word
-              </Button>
-            )}
-            {form.outputFormats?.includes("whatsapp") && (
-              <Button
-                variant="outline"
-                className="text-green-600 border-green-200"
-                onClick={async () => {
-                  const msg = await generateWhatsAppShareMessage(
-                    form.title,
-                    data,
-                    window.location.href,
-                    form.whatsappFormat,
-                    form.gridConfig,
-                    resolveLookup,
-                    resolvedLookups
-                  );
-                  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-                }}
-              >
-                <Share2 className="w-4 h-4 mr-2" /> WhatsApp
-              </Button>
-            )}
+
+          <div className="space-y-3 pt-6 border-t">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Download or Share</Label>
+            <div className="flex flex-wrap gap-2">
+              {form.outputFormats?.includes("excel") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateExcel(form.title, response.data)}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" /> Excel
+                </Button>
+              )}
+              {form.outputFormats?.includes("docx") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateDocx(form, response.data)}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" /> Word
+                </Button>
+              )}
+              {form.outputFormats?.includes("pdf") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generatePdf(form.title, response.data)}
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" /> PDF
+                </Button>
+              )}
+              {form.outputFormats?.includes("whatsapp") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => generateWhatsAppShareMessage(form.whatsappFormat, response.data)}
+                  className="gap-2"
+                >
+                  <Share2 className="w-4 h-4" /> WhatsApp
+                </Button>
+              )}
+            </div>
           </div>
-          <div className="flex flex-col gap-3">
-            {form.allowEditing !== false && (
-              <Button 
-                variant="outline" 
-                className="w-full border-primary text-primary hover:bg-primary/5"
-                onClick={() => setLocation(`/s/${form.id}?edit=${submissionId}`)}
-              >
-                Edit Your Response
-              </Button>
-            )}
-            <Button 
-              className="w-full" 
-              onClick={() => setLocation(`/s/${form.id}`)}
-            >
-              Submit Another Response
-            </Button>
-            {privateUser && form.canPrivateUserViewResponses === "true" && (
-              <Button 
+
+          {form.visibility === "private" && privateUser?.userId && (
+            <div className="pt-6 border-t space-y-3">
+              <Button
                 variant="outline"
-                className="w-full border-blue-600 text-blue-600 hover:bg-blue-50"
-                onClick={() => setLocation(`/private/forms/${form.id}/responses`)}
+                onClick={() => setLocation(`/private/forms/${formId}/responses`)}
+                className="w-full gap-2"
               >
-                <Eye className="w-4 h-4 mr-2" />
-                View All My Responses
+                <Eye className="w-4 h-4" /> View My Responses
               </Button>
-            )}
-            {form.gridConfig?.rows?.some((r: any) => r.cells.some((c: any) => c.type === 'link_button')) && (
-              <div className="pt-4 border-t flex flex-col gap-2">
-                <Label className="text-xs text-slate-500 text-center">Quick Links</Label>
-                {form.gridConfig.rows.map((r: any) => r.cells.map((c: any) => c.type === 'link_button' && (
-                  <Button 
-                    key={c.id}
-                    variant="ghost" 
-                    className="w-full text-primary"
-                    onClick={() => window.open(`/s/${c.value}`, '_blank')}
-                  >
-                    {c.placeholder || "Open Form"}
-                  </Button>
-                )))}
-              </div>
-            )}
+            </div>
+          )}
+
+          <div className="pt-6 border-t">
+            <Button
+              variant="ghost"
+              onClick={() => setLocation(`/s/${form.id}`)}
+              className="w-full gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to Form
+            </Button>
           </div>
         </CardContent>
       </Card>

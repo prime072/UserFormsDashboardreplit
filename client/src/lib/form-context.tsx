@@ -148,6 +148,7 @@ export interface Form {
   confirmationStyle: "table" | "paragraph";
   confirmationText?: string;
   gridConfig?: GridConfig;
+  gridConfigs?: GridConfig[];
   whatsappFormat?: string;
   allowEditing?: boolean;
 }
@@ -277,6 +278,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
     gridConfig?: GridConfig,
     allowEditing: boolean = true,
     canPrivateUserViewResponses: string = "false",
+    gridConfigs?: GridConfig[],
   ) => {
     if (!user?.id) return;
     try {
@@ -296,6 +298,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
           tableConfig,
           whatsappFormat,
           gridConfig,
+          gridConfigs,
           allowEditing,
           canPrivateUserViewResponses,
         }),
@@ -322,6 +325,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
     gridConfig?: GridConfig,
     allowEditing: boolean = true,
     canPrivateUserViewResponses: string = "false",
+    gridConfigs?: GridConfig[],
   ) => {
     if (!user?.id) return;
     try {
@@ -341,6 +345,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
           tableConfig,
           whatsappFormat,
           gridConfig,
+          gridConfigs,
           allowEditing,
           canPrivateUserViewResponses,
         }),
