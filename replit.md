@@ -101,6 +101,12 @@ Preferred communication style: Simple, everyday language.
 - `gridConfigs` is now an array; backward compatible with legacy `gridConfig` (single table)
 - All lookups, formulas, date/HMR calculations work across all sections
 - Sections can be deleted via trash icon on each section in form builder
+- **PDF/Word Formatting**: PDF and Word exports now use the same custom table design formatting as the confirmation page:
+  - Cell colors, text colors, fonts (bold, italic, font size)
+  - Header colors and styling
+  - Table names and text above/below sections
+  - All formatting properties configured in form builder are applied to exports
+  - Multiple sections render with proper spacing in both PDF and Word documents
 
 ## External Dependencies
 

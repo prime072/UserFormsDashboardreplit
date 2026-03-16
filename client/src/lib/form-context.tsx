@@ -671,161 +671,150 @@ export async function generateExcel(formTitle: string, responseData: any) {
 }
 
 export async function generateDocx(
-  formTitle: string,
+  form: any,
   responseData: any,
-  customText?: string,
-  gridConfig?: GridConfig,
-  resolveLookup?: (config: any) => Promise<string>,
-  resolvedPreFetched?: Record<string, string>,
 ) {
   const docRows = [];
+  const grids = form.gridConfigs && form.gridConfigs.length > 0 ? form.gridConfigs : (form.gridConfig ? [form.gridConfig] : []);
 
-  if (gridConfig && gridConfig.rows.length > 0) {
-    if (gridConfig.textAbove) {
-      docRows.push(
-        new Paragraph({ text: gridConfig.textAbove, spacing: { after: 200 } }),
-      );
-    }
-    const bodyRows = await Promise.all(
-      gridConfig.rows.map(
-        async (row) =>
-          new TableRow({
-            children: await Promise.all(
-              row.cells.map(async (cell) => {
-                let value = cell.value;
-                if (cell.type === "variable") {
-                  const rawVal = responseData[cell.value];
-                  if (Array.isArray(rawVal)) {
-                    value = rawVal
-                      .map((item: any, idx: number) => {
-                        const kv = Object.entries(item)
-                          .map(([k, v]) => `${v}`)
-                          .join(", ");
-                        return `${idx + 1}. ${kv}`;
-                      })
-                      .join("\n");
-                  } else {
-                    value = String(rawVal || "");
-                  }
-                } else if (
-                  cell.type === "lookup" ||
-                  cell.type === "formula" ||
-                  cell.type === "date_calc" ||
-                  cell.type === "hmr_calc"
-                ) {
-                  if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
-                    value = resolvedPreFetched[cell.id];
+  for (const gridConfig of grids) {
+    if (gridConfig && gridConfig.rows.length > 0) {
+      if (gridConfig.textAbove) {
+        docRows.push(
+          new Paragraph({ text: gridConfig.textAbove, spacing: { after: 200 } }),
+        );
+      }
+      const bodyRows = await Promise.all(
+        gridConfig.rows.map(
+          async (row) =>
+            new TableRow({
+              children: await Promise.all(
+                row.cells.map(async (cell) => {
+                  let value = cell.value;
+                  if (cell.type === "variable") {
+                    const rawVal = responseData[cell.value];
+                    if (Array.isArray(rawVal)) {
+                      value = rawVal
+                        .map((item: any, idx: number) => {
+                          const kv = Object.entries(item)
+                            .map(([k, v]) => `${v}`)
+                            .join(", ");
+                          return `${idx + 1}. ${kv}`;
+                        })
+                        .join("\n");
+                    } else {
+                      value = String(rawVal || "");
+                    }
                   } else if (
-                    cell.type === "lookup" &&
-                    cell.lookupConfig &&
-                    resolveLookup
+                    cell.type === "lookup" ||
+                    cell.type === "formula" ||
+                    cell.type === "date_calc" ||
+                    cell.type === "hmr_calc"
                   ) {
-                    value = await resolveLookup(cell.lookupConfig);
-                  } else {
                     value = "0";
                   }
-                }
 
-                // For Word documents, we need to handle newlines by creating multiple text runs or paragraphs
-                // For simplicity here, we split by newline and add them
-                const textLines = String(value).split("\n");
+                  const textLines = String(value).split("\n");
 
-                return new TableCell({
-                  children: textLines.map(
-                    (line) =>
-                      new Paragraph({
-                        children: [
-                          new TextRun({
-                            text: line,
-                            bold: cell.bold,
-                            italics: cell.italic,
-                            size: (cell.fontSize || 12) * 2,
-                            color: cell.textColor
-                              ? cell.textColor.replace("#", "")
-                              : undefined,
-                          }),
-                        ],
-                      }),
-                  ),
-                  shading: cell.color
-                    ? { fill: cell.color.replace("#", "") }
-                    : undefined,
-                  columnSpan: cell.colspan || 1,
-                });
-              }),
-            ),
-          }),
-      ),
-    );
-    const rows = [];
-    if (gridConfig.tableName) {
-      rows.push(
-        new TableRow({
-          children: [
-            new TableCell({
-              children: [
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: gridConfig.tableName,
-                      bold: true,
-                      size: 28,
-                    }),
-                  ],
-                  alignment: AlignmentType.CENTER,
+                  return new TableCell({
+                    children: textLines.map(
+                      (line) =>
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: line,
+                              bold: cell.bold,
+                              italics: cell.italic,
+                              size: (cell.fontSize || 12) * 2,
+                              color: cell.textColor
+                                ? cell.textColor.replace("#", "")
+                                : undefined,
+                            }),
+                          ],
+                        }),
+                    ),
+                    shading: cell.color
+                      ? { fill: cell.color.replace("#", "") }
+                      : undefined,
+                    columnSpan: cell.colspan || 1,
+                  });
                 }),
-              ],
-              columnSpan: gridConfig.headers.length,
-              shading: { fill: "e2e8f0" },
+              ),
             }),
-          ],
-        }),
+        ),
       );
-    }
-
-    if (gridConfig.showHeaders !== false) {
-      rows.push(
-        new TableRow({
-          children: gridConfig.headers.map(
-            (h) =>
+      const rows = [];
+      if (gridConfig.tableName) {
+        rows.push(
+          new TableRow({
+            children: [
               new TableCell({
                 children: [
                   new Paragraph({
                     children: [
                       new TextRun({
-                        text: h,
+                        text: gridConfig.tableName,
                         bold: true,
-                        color: gridConfig.headerTextColor
-                          ? gridConfig.headerTextColor.replace("#", "")
-                          : undefined,
+                        size: 28,
                       }),
                     ],
+                    alignment: AlignmentType.CENTER,
                   }),
                 ],
-                shading: {
-                  fill: gridConfig.headerColor
-                    ? gridConfig.headerColor.replace("#", "")
-                    : "f1f5f9",
-                },
+                columnSpan: gridConfig.headers.length,
+                shading: { fill: "e2e8f0" },
               }),
-          ),
+            ],
+          }),
+        );
+      }
+
+      if (gridConfig.showHeaders !== false) {
+        rows.push(
+          new TableRow({
+            children: gridConfig.headers.map(
+              (h) =>
+                new TableCell({
+                  children: [
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: h,
+                          bold: true,
+                          color: gridConfig.headerTextColor
+                            ? gridConfig.headerTextColor.replace("#", "")
+                            : undefined,
+                        }),
+                      ],
+                    }),
+                  ],
+                  shading: {
+                    fill: gridConfig.headerColor
+                      ? gridConfig.headerColor.replace("#", "")
+                      : "f1f5f9",
+                  },
+                }),
+            ),
+          }),
+        );
+      }
+
+      docRows.push(
+        new Table({
+          rows: [...rows, ...bodyRows],
+          width: { size: 100, type: WidthType.PERCENTAGE },
         }),
       );
-    }
 
-    docRows.push(
-      new Table({
-        rows: [...rows, ...bodyRows],
-        width: { size: 100, type: WidthType.PERCENTAGE },
-      }),
-    );
-
-    if (gridConfig.textBelow) {
-      docRows.push(
-        new Paragraph({ text: gridConfig.textBelow, spacing: { before: 200 } }),
-      );
+      if (gridConfig.textBelow) {
+        docRows.push(
+          new Paragraph({ text: gridConfig.textBelow, spacing: { before: 200 } }),
+        );
+      }
     }
-  } else {
+  }
+
+  if (docRows.length === 0) {
     const tableRows = Object.entries(responseData)
       .filter(([key]) => key !== "id" && key !== "submittedAt")
       .map(
@@ -876,7 +865,7 @@ export async function generateDocx(
       {
         children: [
           new Paragraph({
-            text: formTitle,
+            text: form.title,
             heading: "Heading1",
             alignment: AlignmentType.CENTER,
           }),
@@ -895,28 +884,26 @@ export async function generateDocx(
   const url = URL.createObjectURL(buffer);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${formTitle}-response-${new Date().toISOString().split("T")[0]}.docx`;
+  a.download = `${form.title}-response-${new Date().toISOString().split("T")[0]}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
 export async function generatePdf(
-  formTitle: string,
+  form: any,
   responseData: any,
-  customText?: string,
-  gridConfig?: GridConfig,
-  resolveLookup?: (config: any) => Promise<string>,
-  resolvedPreFetched?: Record<string, string>,
 ) {
   const doc = new jsPDF();
   doc.setFontSize(20);
-  doc.text(formTitle, 20, 20);
+  doc.text(form.title, 20, 20);
   doc.setFontSize(10);
   doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
 
   let y = 40;
+  const grids = form.gridConfigs && form.gridConfigs.length > 0 ? form.gridConfigs : (form.gridConfig ? [form.gridConfig] : []);
 
-  if (gridConfig && gridConfig.rows.length > 0) {
+  for (const gridConfig of grids) {
+    if (gridConfig && gridConfig.rows.length > 0) {
     if (gridConfig.textAbove) {
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
@@ -1042,8 +1029,14 @@ export async function generatePdf(
       doc.setTextColor("#475569");
       const splitTextBelow = doc.splitTextToSize(gridConfig.textBelow, 170);
       doc.text(splitTextBelow, 20, y);
+      y += splitTextBelow.length * 5 + 10;
+    } else {
+      y += 10;
     }
-  } else {
+    }
+  }
+
+  if (grids.length === 0 || grids.every((g: any) => !g || g.rows.length === 0)) {
     Object.entries(responseData)
       .filter(([key]) => key !== "id" && key !== "submittedAt")
       .forEach(([key, val]) => {
@@ -1056,7 +1049,7 @@ export async function generatePdf(
   }
 
   doc.save(
-    `${formTitle}-response-${new Date().toISOString().split("T")[0]}.pdf`,
+    `${form.title}-response-${new Date().toISOString().split("T")[0]}.pdf`,
   );
 }
 

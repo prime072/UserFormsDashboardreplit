@@ -433,7 +433,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => generatePdf(form.title, response.data)}
+                  onClick={() => generatePdf(form, response.data)}
                   className="gap-2"
                 >
                   <Download className="w-4 h-4" /> PDF
