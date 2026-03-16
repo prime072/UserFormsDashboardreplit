@@ -960,17 +960,7 @@ export async function generatePdf(
               cell.type === "date_calc" ||
               cell.type === "hmr_calc"
             ) {
-              if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
-                val = resolvedPreFetched[cell.id];
-              } else if (
-                cell.type === "lookup" &&
-                cell.lookupConfig &&
-                resolveLookup
-              ) {
-                val = await resolveLookup(cell.lookupConfig);
-              } else {
-                val = "0";
-              }
+              val = "0";
             }
             return val;
           }),
@@ -1117,17 +1107,7 @@ export async function generateWhatsAppShareMessage(
               cell.type === "date_calc" ||
               cell.type === "hmr_calc"
             ) {
-              if (resolvedPreFetched && resolvedPreFetched[cell.id]) {
-                val = resolvedPreFetched[cell.id];
-              } else if (
-                cell.type === "lookup" &&
-                cell.lookupConfig &&
-                resolveLookup
-              ) {
-                val = await resolveLookup(cell.lookupConfig);
-              } else {
-                val = "0";
-              }
+              val = "0";
             }
             return val;
           }),
