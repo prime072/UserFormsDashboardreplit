@@ -423,7 +423,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => generateDocx(form, response.data)}
+                  onClick={() => generateDocx(form, response.data, resolvedLookups)}
                   className="gap-2"
                 >
                   <Download className="w-4 h-4" /> Word
@@ -433,7 +433,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => generatePdf(form, response.data)}
+                  onClick={() => generatePdf(form, response.data, resolvedLookups)}
                   className="gap-2"
                 >
                   <Download className="w-4 h-4" /> PDF

@@ -673,11 +673,13 @@ export async function generateExcel(formTitle: string, responseData: any) {
 export async function generateDocx(
   form: any,
   responseData: any,
+  resolvedLookups?: Record<number, Record<string, string>>,
 ) {
   const docRows = [];
   const grids = form.gridConfigs && form.gridConfigs.length > 0 ? form.gridConfigs : (form.gridConfig ? [form.gridConfig] : []);
 
-  for (const gridConfig of grids) {
+  for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
+    const gridConfig = grids[gridIdx];
     if (gridConfig && gridConfig.rows.length > 0) {
       if (gridConfig.textAbove) {
         docRows.push(
@@ -711,7 +713,7 @@ export async function generateDocx(
                     cell.type === "date_calc" ||
                     cell.type === "hmr_calc"
                   ) {
-                    value = "0";
+                    value = (resolvedLookups && resolvedLookups[gridIdx] && resolvedLookups[gridIdx][cell.id]) || "0";
                   }
 
                   const textLines = String(value).split("\n");
@@ -892,6 +894,7 @@ export async function generateDocx(
 export async function generatePdf(
   form: any,
   responseData: any,
+  resolvedLookups?: Record<number, Record<string, string>>,
 ) {
   const doc = new jsPDF();
   doc.setFontSize(20);
@@ -902,7 +905,8 @@ export async function generatePdf(
   let y = 40;
   const grids = form.gridConfigs && form.gridConfigs.length > 0 ? form.gridConfigs : (form.gridConfig ? [form.gridConfig] : []);
 
-  for (const gridConfig of grids) {
+  for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
+    const gridConfig = grids[gridIdx];
     if (gridConfig && gridConfig.rows.length > 0) {
       if (gridConfig.textAbove) {
         doc.setFontSize(10);
@@ -960,7 +964,7 @@ export async function generatePdf(
               cell.type === "date_calc" ||
               cell.type === "hmr_calc"
             ) {
-              val = "0";
+              val = (resolvedLookups && resolvedLookups[gridIdx] && resolvedLookups[gridIdx][cell.id]) || "0";
             }
             return val;
           }),
@@ -1107,7 +1111,7 @@ export async function generateWhatsAppShareMessage(
               cell.type === "date_calc" ||
               cell.type === "hmr_calc"
             ) {
-              val = "0";
+              val = (resolvedLookups && resolvedLookups[gridIdx] && resolvedLookups[gridIdx][cell.id]) || "0";
             }
             return val;
           }),
