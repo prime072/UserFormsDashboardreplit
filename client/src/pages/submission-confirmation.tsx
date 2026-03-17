@@ -443,7 +443,11 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => generateWhatsAppShareMessage(form, response.data, resolvedLookups)}
+                  onClick={async () => {
+                    const message = await generateWhatsAppShareMessage(form, response.data, resolvedLookups);
+                    const encodedMessage = encodeURIComponent(message);
+                    window.open(`https://wa.me/?text=${encodedMessage}`, "_blank");
+                  }}
                   className="gap-2"
                 >
                   <Share2 className="w-4 h-4" /> WhatsApp
