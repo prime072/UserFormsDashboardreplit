@@ -1048,13 +1048,9 @@ export async function generatePdf(
 }
 
 export async function generateWhatsAppShareMessage(
-  formTitle: string,
+  form: any,
   responseData: any,
-  formUrl: string,
-  customFormat?: string,
-  gridConfig?: GridConfig,
-  resolveLookup?: (config: any) => Promise<string>,
-  resolvedPreFetched?: Record<string, string>,
+  resolvedLookups?: Record<number, Record<string, string>>,
 ): Promise<string> {
   const formatRepeaterValue = (val: any) => {
     if (Array.isArray(val)) {
@@ -1069,6 +1065,8 @@ export async function generateWhatsAppShareMessage(
     return String(val || "");
   };
 
+  const customFormat = form.whatsappFormat;
+  
   if (customFormat) {
     let message = customFormat;
     Object.entries(responseData).forEach(([key, value]) => {
@@ -1078,48 +1076,61 @@ export async function generateWhatsAppShareMessage(
       );
     });
 
-    // Support [[CellID]] substitution in custom format
-    if (message.includes("[[") && resolvedPreFetched) {
+    // Support [[CellID]] substitution in custom format - search all grids
+    if (message.includes("[[")) {
       const cellMatches = message.match(/\[\[([^\]]+)\]\]/g);
-      if (cellMatches) {
+      if (cellMatches && resolvedLookups) {
         for (const match of cellMatches) {
           const cellId = match.slice(2, -2);
-          if (resolvedPreFetched[cellId] !== undefined) {
-            message = message.replace(match, resolvedPreFetched[cellId]);
+          // Search all grids for this cellId
+          for (const lookups of Object.values(resolvedLookups)) {
+            if (lookups[cellId] !== undefined) {
+              message = message.replace(match, lookups[cellId]);
+              break;
+            }
           }
         }
       }
     }
 
-    message = message.replace(/{{form_url}}/g, formUrl);
-    message = message.replace(/{{form_title}}/g, formTitle);
+    message = message.replace(/{{form_url}}/g, window.location.href);
+    message = message.replace(/{{form_title}}/g, form.title);
     return message;
   }
 
   let summary = "";
-  if (gridConfig && gridConfig.rows.length > 0) {
-    const rowStrings = await Promise.all(
-      gridConfig.rows.map(async (row) => {
-        const cellStrings = await Promise.all(
-          row.cells.map(async (cell) => {
-            let val = cell.value;
-            if (cell.type === "variable") {
-              val = formatRepeaterValue(responseData[cell.value]);
-            } else if (
-              cell.type === "lookup" ||
-              cell.type === "formula" ||
-              cell.type === "date_calc" ||
-              cell.type === "hmr_calc"
-            ) {
-              val = (resolvedLookups && resolvedLookups[gridIdx] && resolvedLookups[gridIdx][cell.id]) || "0";
-            }
-            return val;
+  const grids = form.gridConfigs && form.gridConfigs.length > 0 ? form.gridConfigs : (form.gridConfig ? [form.gridConfig] : []);
+  
+  if (grids.length > 0 && grids.some((g: any) => g && g.rows.length > 0)) {
+    const sections = [];
+    for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
+      const gridConfig = grids[gridIdx];
+      if (gridConfig && gridConfig.rows.length > 0) {
+        const rowStrings = await Promise.all(
+          gridConfig.rows.map(async (row) => {
+            const cellStrings = await Promise.all(
+              row.cells.map(async (cell) => {
+                let val = cell.value;
+                if (cell.type === "variable") {
+                  val = formatRepeaterValue(responseData[cell.value]);
+                } else if (
+                  cell.type === "lookup" ||
+                  cell.type === "formula" ||
+                  cell.type === "date_calc" ||
+                  cell.type === "hmr_calc"
+                ) {
+                  val = (resolvedLookups && resolvedLookups[gridIdx] && resolvedLookups[gridIdx][cell.id]) || "0";
+                }
+                return val;
+              }),
+            );
+            return cellStrings.join(" : ");
           }),
         );
-        return cellStrings.join(" : ");
-      }),
-    );
-    summary = rowStrings.join("\n");
+        sections.push(rowStrings.join("\n"));
+      }
+    }
+    summary = sections.join("\n\n");
   } else {
     summary = Object.entries(responseData)
       .filter(([key]) => key !== "id" && key !== "submittedAt")
@@ -1127,5 +1138,5 @@ export async function generateWhatsAppShareMessage(
       .join("\n");
   }
 
-  return `Form: ${formTitle}\n\n${summary}`;
+  return `Form: ${form.title}\n\n${summary}`;
 }

@@ -443,7 +443,7 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => generateWhatsAppShareMessage(form.whatsappFormat, response.data)}
+                  onClick={() => generateWhatsAppShareMessage(form, response.data, resolvedLookups)}
                   className="gap-2"
                 >
                   <Share2 className="w-4 h-4" /> WhatsApp
