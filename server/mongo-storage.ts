@@ -459,6 +459,44 @@ export class MongoDBStorage implements IStorage {
     };
     const doc = await UserDatabaseModel.create(newDb);
     const { _id, ...rest } = doc.toObject() as any;
+    
+    // Also create a dummy form with the database data as responses
+    try {
+      const formId = Math.random().toString(36).substr(2, 9);
+      const dummyForm = {
+        id: formId,
+        userId: dbData.userId || "system",
+        title: dbData.name,
+        status: "Active",
+        visibility: "public",
+        fields: [],
+        outputFormats: [],
+        isDataForm: true, // Mark as a data form created from Excel
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any;
+      
+      await FormModel.create(dummyForm);
+      
+      // Create responses from the Excel data
+      if (Array.isArray(dbData.data) && dbData.data.length > 0) {
+        const responsePromises = dbData.data.map((rowData: any) => {
+          const responseId = Math.random().toString(36).substr(2, 9);
+          return ResponseModel.create({
+            id: responseId,
+            formId,
+            data: rowData,
+            submittedAt: new Date(),
+            updatedAt: new Date(),
+          });
+        });
+        await Promise.all(responsePromises);
+      }
+    } catch (error) {
+      console.error("Error creating dummy form for database:", error);
+      // Don't fail the database creation if form creation fails
+    }
+    
     return rest as UserDatabase;
   }
 
