@@ -67,11 +67,16 @@ export function registerAuthRoutes(app: Express) {
     try {
       const { email, password } = loginSchema.parse(req.body);
 
-      // Find user by email only
-      const user = await (storage as any).getUserByEmail?.(email);
+      const user =
+        (await (storage as any).getUserByEmail?.(email)) ||
+        (await (storage as any).getUserByUsername?.(email));
       
       if (!user) {
         return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      if (!(user as any).password) {
+        return res.status(500).json({ error: "Account is missing password data" });
       }
 
       // Verify password
