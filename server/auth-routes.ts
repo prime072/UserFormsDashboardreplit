@@ -15,18 +15,13 @@ const loginSchema = z.object({
 });
 
 export function registerAuthRoutes(app: Express) {
-  const getUserByEmailOrUsername = async (email: string) => {
-    const byEmail = await storage.getUserByUsername(email);
-    return byEmail;
-  };
-
   // Sign up / Register
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const { email, password, firstName } = signupSchema.parse(req.body);
 
-      // Check if user already exists by email
-      const existingUser = await (storage as any).getUserByEmail?.(email);
+      // Check if user already exists by email/username
+      const existingUser = await storage.getUserByUsername(email);
       if (existingUser) {
         return res.status(409).json({ 
           error: "This email is already registered. Please log in." 
@@ -72,9 +67,7 @@ export function registerAuthRoutes(app: Express) {
     try {
       const { email, password } = loginSchema.parse(req.body);
 
-      const user =
-        (await (storage as any).getUserByEmail?.(email)) ||
-        (await getUserByEmailOrUsername(email));
+      const user = await storage.getUserByUsername(email);
       
       if (!user) {
         return res.status(401).json({ error: "Invalid email or password" });
