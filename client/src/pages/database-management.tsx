@@ -184,24 +184,31 @@ export default function DatabaseManagement() {
       const wb = XLSX.read(bstr, { type: "binary" });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
-      
-      if (data.length > 0) {
-        const headers = Object.keys(data[0] as object);
-        const config = {
-          columns: headers.reduce((acc: any, header) => {
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][];
+      const [headerRow, ...dataRows] = rows;
+      if (!headerRow || headerRow.length === 0) return;
+
+      const headers = headerRow.map((header) => String(header || "").trim()).filter(Boolean);
+      const data = dataRows
+        .filter((row) => row.some((value) => String(value || "").trim() !== ""))
+        .map((row) =>
+          headers.reduce((acc: Record<string, any>, header, index) => {
+            acc[header] = row[index] ?? "";
+            return acc;
+          }, {}),
+        );
+
+      createDbMutation.mutate({
+        name: dbName || file.name.replace(/\.[^/.]+$/, ""),
+        description: `Uploaded from ${file.name}`,
+        config: {
+          columns: headers.reduce((acc: Record<string, { type: string }>, header) => {
             acc[header] = { type: "text" };
             return acc;
-          }, {})
-        };
-
-        createDbMutation.mutate({
-          name: dbName || file.name.replace(/\.[^/.]+$/, ""),
-          description: `Uploaded from ${file.name}`,
-          config,
-          data
-        });
-      }
+          }, {}),
+        },
+        data,
+      });
     };
     reader.readAsBinaryString(file);
   };
