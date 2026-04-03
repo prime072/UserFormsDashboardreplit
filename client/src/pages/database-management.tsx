@@ -184,21 +184,10 @@ export default function DatabaseManagement() {
       const wb = XLSX.read(bstr, { type: "binary" });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
-      const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "" });
-      if (rows.length < 2) return;
-
-      const headers = rows[0].map((header) => String(header || "").trim()).filter(Boolean);
-      const data = rows.slice(1)
-        .filter((row) => Array.isArray(row) && row.some((cell) => String(cell || "").trim() !== ""))
-        .map((row) => {
-          const obj: Record<string, any> = {};
-          headers.forEach((header, index) => {
-            obj[header] = row[index] ?? "";
-          });
-          return obj;
-        });
-
-      if (headers.length > 0 && data.length > 0) {
+      const data = XLSX.utils.sheet_to_json(ws);
+      
+      if (data.length > 0) {
+        const headers = Object.keys(data[0] as object);
         const config = {
           columns: headers.reduce((acc: any, header) => {
             acc[header] = { type: "text" };
@@ -210,9 +199,7 @@ export default function DatabaseManagement() {
           name: dbName || file.name.replace(/\.[^/.]+$/, ""),
           description: `Uploaded from ${file.name}`,
           config,
-          data,
-          columnNames: headers,
-          sourceType: "excel"
+          data
         });
       }
     };
@@ -247,7 +234,7 @@ export default function DatabaseManagement() {
               <DialogHeader>
                 <DialogTitle>Upload Excel Database</DialogTitle>
                 <DialogDescription>
-                  Upload an Excel file to create a new database. The first row will be used as column names.
+                  Upload an Excel file to create a new database. The first row must contain headers.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -281,12 +268,16 @@ export default function DatabaseManagement() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* User Uploaded Databases */}
           {userDatabases?.map((db) => (
             <UserDatabaseCard key={db.id} db={db} />
           ))}
+
+          {/* Existing Form Databases */}
           {formDatabases?.map((form) => (
             <FormDatabaseCard key={form.id} form={form} />
           ))}
+
           {(!formDatabases || formDatabases.length === 0) && (!userDatabases || userDatabases.length === 0) && (
             <div className="col-span-full py-12 text-center border-2 border-dashed rounded-lg">
               <Database className="mx-auto h-12 w-12 text-muted-foreground/50" />
