@@ -165,8 +165,8 @@ export default function ResponsesView() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>All Responses</CardTitle>
             <div className="flex items-center gap-2">
-              <Input 
-                placeholder="Search responses..." 
+              <Input
+                placeholder="Search responses..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="max-w-xs h-8"
