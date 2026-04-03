@@ -145,6 +145,15 @@ const isImageUrl = (value: unknown) =>
   typeof value === "string" && /^https?:\/\//i.test(value);
 const isDataImage = (value: unknown) =>
   typeof value === "string" && value.startsWith("data:image/");
+const guessImageFormat = (value: string) => {
+  if (value.startsWith("data:image/jpeg")) return "JPEG";
+  if (value.startsWith("data:image/jpg")) return "JPEG";
+  if (value.startsWith("data:image/png")) return "PNG";
+  if (value.startsWith("data:image/gif")) return "GIF";
+  if (value.startsWith("data:image/webp")) return "WEBP";
+  if (value.startsWith("data:image/x-icon") || value.startsWith("data:image/vnd.microsoft.icon")) return "PNG";
+  return "PNG";
+};
 
 export interface FormTableRow {
   id: string;
@@ -1058,7 +1067,7 @@ export async function generatePdf(
         }
 
         let x = 20;
-        row.cells.forEach((cell, i) => {
+        for (const [i, cell] of row.cells.entries()) {
           const val = String(cellValues[i]);
           const cw = (cell.colspan || 1) * colWidth;
 
@@ -1085,8 +1094,8 @@ export async function generatePdf(
             try {
               const width = cell.imageWidth || Math.min(cw - 4, 120);
               const height = cell.imageHeight || 80;
-              const format = isDataImage(cell.value) ? "PNG" : "PNG";
               const dataUrl = isDataImage(cell.value) ? cell.value : await imageDataUrl(cell.value);
+              const format = guessImageFormat(dataUrl);
               doc.addImage(dataUrl, format, x + 2, y + 2, width, height);
             } catch {
               const splitVal = doc.splitTextToSize(val, cw - 4);
@@ -1097,7 +1106,7 @@ export async function generatePdf(
             doc.text(splitVal, x + 2, y + 7);
           }
           x += cw;
-        });
+        }
         y += maxHeight;
       }
 
