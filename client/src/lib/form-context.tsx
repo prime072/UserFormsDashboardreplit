@@ -758,7 +758,7 @@ export async function generateDocx(
                       value = String(rawVal || "");
                     }
                   } else if (cell.type === "image") {
-                    value = "";
+                    value = cell.value;
                   } else if (
                     cell.type === "lookup" ||
                     cell.type === "formula" ||
@@ -1038,7 +1038,7 @@ export async function generatePdf(
                 val = String(rawVal || "");
               }
           } else if (cell.type === "image") {
-            val = cell.value ? "IMAGE" : "";
+            val = cell.value ? "" : "";
             } else if (
               cell.type === "lookup" ||
               cell.type === "formula" ||
