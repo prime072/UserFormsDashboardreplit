@@ -143,6 +143,8 @@ const imageDataUrl = (url: string): Promise<string> =>
 
 const isImageUrl = (value: unknown) =>
   typeof value === "string" && /^https?:\/\//i.test(value);
+const isDataImage = (value: unknown) =>
+  typeof value === "string" && value.startsWith("data:image/");
 
 export interface FormTableRow {
   id: string;
@@ -759,14 +761,13 @@ export async function generateDocx(
 
                   if (cell.type === "image" && cell.value) {
                     try {
-                      const dataUrl = await imageDataUrl(cell.value);
+                      const dataUrl = isDataImage(cell.value) ? cell.value : await imageDataUrl(cell.value);
                       return new TableCell({
                         children: [
                           new Paragraph({
                             children: [
                               new ImageRun({
                                 data: dataUrl,
-                                type: "png",
                                 transformation: {
                                   width: cell.imageWidth || 120,
                                   height: cell.imageHeight || 120,
@@ -1084,7 +1085,9 @@ export async function generatePdf(
             try {
               const width = cell.imageWidth || Math.min(cw - 4, 120);
               const height = cell.imageHeight || 80;
-              doc.addImage(cell.value, "PNG", x + 2, y + 2, width, height);
+              const format = isDataImage(cell.value) ? "PNG" : "PNG";
+              const dataUrl = isDataImage(cell.value) ? cell.value : await imageDataUrl(cell.value);
+              doc.addImage(dataUrl, format, x + 2, y + 2, width, height);
             } catch {
               const splitVal = doc.splitTextToSize(val, cw - 4);
               doc.text(splitVal, x + 2, y + 7);

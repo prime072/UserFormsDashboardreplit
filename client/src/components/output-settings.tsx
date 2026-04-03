@@ -366,6 +366,20 @@ export default function OutputSettings({
                                 onChange={(e) => updateCell(rIndex, cIndex, { value: e.target.value })}
                                 className="h-7 text-xs"
                               />
+                              <Input
+                                type="file"
+                                accept="image/png,image/jpeg,image/jpg,image/x-icon,image/vnd.microsoft.icon"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    updateCell(rIndex, cIndex, { value: String(reader.result || "") });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }}
+                                className="h-7 text-xs"
+                              />
                               <div className="flex gap-1">
                                 <Input
                                   type="number"
