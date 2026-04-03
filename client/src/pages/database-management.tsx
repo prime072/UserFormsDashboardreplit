@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -157,7 +157,7 @@ export default function DatabaseManagement() {
     mutationFn: async (newDb: any) => {
       const res = await fetch("/api/user-databases", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "x-user-id": user?.id || ""
         },
@@ -168,6 +168,7 @@ export default function DatabaseManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-databases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/forms-database"] });
       setIsUploadOpen(false);
       setDbName("");
       toast({ title: "Success", description: "Database created from Excel" });
@@ -184,12 +185,23 @@ export default function DatabaseManagement() {
       const wb = XLSX.read(bstr, { type: "binary" });
       const wsname = wb.SheetNames[0];
       const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws);
-      
-      if (data.length > 0) {
-        const headers = Object.keys(data[0] as object);
+      const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][];
+      const rows = rawRows.filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
+
+      if (rows.length > 1) {
+        const headers = rows[0].map((header) => String(header || "").trim()).filter(Boolean);
+        const data = rows.slice(1)
+          .map((row) => {
+            const obj: Record<string, any> = {};
+            headers.forEach((header, idx) => {
+              obj[header] = row[idx] ?? "";
+            });
+            return obj;
+          })
+          .filter((row) => Object.values(row).some((value) => String(value ?? "").trim() !== ""));
+
         const config = {
-          columns: headers.reduce((acc: any, header) => {
+          columns: headers.reduce((acc: Record<string, { type: string }>, header) => {
             acc[header] = { type: "text" };
             return acc;
           }, {})
@@ -234,24 +246,25 @@ export default function DatabaseManagement() {
               <DialogHeader>
                 <DialogTitle>Upload Excel Database</DialogTitle>
                 <DialogDescription>
-                  Upload an Excel file to create a new database. The first row must contain headers.
+                  Upload an Excel file to create a new database. The first row will be used as field names.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="dbName">Database Name (Optional)</Label>
-                  <Input 
-                    id="dbName" 
-                    placeholder="Auto-generated if empty" 
+                  <Input
+                    id="dbName"
+                    placeholder="Auto-generated if empty"
                     value={dbName}
                     onChange={(e) => setDbName(e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label>Select Excel File</Label>
-                  <Input 
-                    type="file" 
-                    accept=".xlsx, .xls, .csv" 
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
                     onChange={handleFileUpload}
                     disabled={createDbMutation.isPending}
                   />
@@ -268,12 +281,10 @@ export default function DatabaseManagement() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* User Uploaded Databases */}
           {userDatabases?.map((db) => (
             <UserDatabaseCard key={db.id} db={db} />
           ))}
 
-          {/* Existing Form Databases */}
           {formDatabases?.map((form) => (
             <FormDatabaseCard key={form.id} form={form} />
           ))}
