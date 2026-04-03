@@ -318,6 +318,18 @@ function SubmissionConfirmationContent({ form, response, resolveLookup, submissi
                         } else {
                           val = String(rawVal || "");
                         }
+                      } else if (cell.type === "image") {
+                        val = cell.value ? (
+                          <img
+                            src={cell.value}
+                            alt={cell.placeholder || "Cell image"}
+                            style={{
+                              width: `${cell.imageWidth || 120}px`,
+                              height: `${cell.imageHeight || 120}px`,
+                              objectFit: "contain",
+                            }}
+                          />
+                        ) : "";
                       } else if (cell.type === "lookup" || cell.type === "formula" || cell.type === "date_calc" || cell.type === "hmr_calc") {
                         val = gridLookups[cell.id] || "Loading...";
                       }

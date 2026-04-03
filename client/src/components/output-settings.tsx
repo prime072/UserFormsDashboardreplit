@@ -288,6 +288,7 @@ export default function OutputSettings({
                             >
                               <option value="text">Txt</option>
                               <option value="variable">Var</option>
+                              <option value="image">Img</option>
                               <option value="lookup">Lkp</option>
                               <option value="formula">Fx</option>
                               <option value="date_calc">Date Calc</option>
@@ -357,6 +358,33 @@ export default function OutputSettings({
                                 <option key={f.id} value={f.label}>{f.label}</option>
                               ))}
                             </select>
+                          ) : cell.type === "image" ? (
+                            <div className="space-y-1">
+                              <Input
+                                placeholder="Image URL"
+                                value={cell.value}
+                                onChange={(e) => updateCell(rIndex, cIndex, { value: e.target.value })}
+                                className="h-7 text-xs"
+                              />
+                              <div className="flex gap-1">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  placeholder="W px"
+                                  value={cell.imageWidth || ""}
+                                  onChange={(e) => updateCell(rIndex, cIndex, { imageWidth: parseInt(e.target.value) || undefined })}
+                                  className="h-7 text-xs"
+                                />
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  placeholder="H px"
+                                  value={cell.imageHeight || ""}
+                                  onChange={(e) => updateCell(rIndex, cIndex, { imageHeight: parseInt(e.target.value) || undefined })}
+                                  className="h-7 text-xs"
+                                />
+                              </div>
+                            </div>
                           ) : (cell.type === "date_calc" || cell.type === "hmr_calc") ? (
                             <div className="space-y-1">
                               <div className="flex gap-1">

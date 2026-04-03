@@ -66,6 +66,7 @@ export interface FormTableCell {
   type:
     | "text"
     | "variable"
+    | "image"
     | "lookup"
     | "formula"
     | "hmr_calc"
@@ -115,6 +116,8 @@ export interface FormTableCell {
   bold?: boolean;
   italic?: boolean;
   colspan?: number;
+  imageWidth?: number;
+  imageHeight?: number;
 }
 
 export interface FormTableRow {
