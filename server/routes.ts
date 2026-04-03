@@ -284,13 +284,20 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     try {
       const userId = getUserId(req);
       const { name, description, config, data } = req.body;
+      const headers = Array.isArray(config?.columns) ? config.columns : Object.keys(config?.columns || {});
       const form = await storage.createForm({
         userId,
         title: name,
         status: "Active",
         visibility: "public",
         canPrivateUserViewResponses: "false",
-        fields: [],
+        fields: headers.map((header: string, index: number) => ({
+          id: `excel_${index}_${header.replace(/[^a-zA-Z0-9]/g, "_")}`,
+          type: "text",
+          label: header,
+          required: false,
+          options: [],
+        })),
         outputFormats: ["thank_you"],
         confirmationStyle: "table",
         confirmationText: "",
