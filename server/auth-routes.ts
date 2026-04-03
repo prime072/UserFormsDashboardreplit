@@ -15,6 +15,11 @@ const loginSchema = z.object({
 });
 
 export function registerAuthRoutes(app: Express) {
+  const getUserByEmailOrUsername = async (email: string) => {
+    const byEmail = await storage.getUserByUsername(email);
+    return byEmail;
+  };
+
   // Sign up / Register
   app.post("/api/auth/signup", async (req, res) => {
     try {
@@ -69,7 +74,7 @@ export function registerAuthRoutes(app: Express) {
 
       const user =
         (await (storage as any).getUserByEmail?.(email)) ||
-        (await (storage as any).getUserByUsername?.(email));
+        (await getUserByEmailOrUsername(email));
       
       if (!user) {
         return res.status(401).json({ error: "Invalid email or password" });
