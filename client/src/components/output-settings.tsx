@@ -522,18 +522,15 @@ export default function OutputSettings({
                                     className="w-full h-7 text-xs rounded border"
                                   >
                                     <option value="">Select Field</option>
-                                {(() => {
-                                  const lookupForm = useForms().getForm(cell.lookupConfig.formId);
-                                  const fields = lookupForm?.fields?.length
-                                    ? lookupForm.fields
-                                    : Object.keys((lookupForm as any)?.responses?.[0]?.data || {}).map((label) => ({
-                                        id: label,
-                                        label,
-                                      }));
-                                  return fields.map((f: any) => (
-                                    <option key={f.id} value={f.label}>{f.label}</option>
-                                  ));
-                                })()}
+                                    {(() => {
+                                      const lookupForm = useForms().getForm(cell.lookupConfig.formId);
+                                      const fieldList = lookupForm?.fields?.length
+                                        ? lookupForm.fields
+                                        : [];
+                                      return fieldList.map((f: any) => (
+                                        <option key={f.id} value={f.label}>{f.label}</option>
+                                      ));
+                                    })()}
                                   </select>
                                   <select 
                                     value={cell.lookupConfig?.lookupType || "last"}
@@ -579,13 +576,10 @@ export default function OutputSettings({
                                         <option value="">Filter Field</option>
                                         {(() => {
                                           const lookupForm = useForms().getForm(cell.lookupConfig.formId);
-                                          const fields = lookupForm?.fields?.length
+                                          const fieldList = lookupForm?.fields?.length
                                             ? lookupForm.fields
-                                            : Object.keys((lookupForm as any)?.responses?.[0]?.data || {}).map((label) => ({
-                                                id: label,
-                                                label,
-                                              }));
-                                          return fields.map((f: any) => (
+                                            : [];
+                                          return fieldList.map((f: any) => (
                                             <option key={f.id} value={f.label}>{f.label}</option>
                                           ));
                                         })()}

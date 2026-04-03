@@ -316,15 +316,14 @@ export async function registerRoutes(app: express.Express): Promise<void> {
           } as any);
         }
       }
-
-      const db = await storage.createUserDatabase({
+      res.status(201).json({
+        id: form.id,
         userId,
         name,
         description,
         config,
-        data: { formId: form.id, rows: data?.length || 0 },
+        data: { formId: form.id, rows: Array.isArray(data) ? data.length : 0 },
       });
-      res.status(201).json(db);
     } catch (error) {
       res.status(500).json({ message: "Failed to create database" });
     }
