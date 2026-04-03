@@ -20,8 +20,8 @@ export function registerAuthRoutes(app: Express) {
     try {
       const { email, password, firstName } = signupSchema.parse(req.body);
 
-      // Check if user already exists by email/username
-      const existingUser = await storage.getUserByUsername(email);
+      // Check if user already exists by email
+      const existingUser = await (storage as any).getUserByEmail?.(email);
       if (existingUser) {
         return res.status(409).json({ 
           error: "This email is already registered. Please log in." 
@@ -67,14 +67,11 @@ export function registerAuthRoutes(app: Express) {
     try {
       const { email, password } = loginSchema.parse(req.body);
 
-      const user = await storage.getUserByUsername(email);
+      // Find user by email only
+      const user = await (storage as any).getUserByEmail?.(email);
       
       if (!user) {
         return res.status(401).json({ error: "Invalid email or password" });
-      }
-
-      if (!(user as any).password) {
-        return res.status(500).json({ error: "Account is missing password data" });
       }
 
       // Verify password
