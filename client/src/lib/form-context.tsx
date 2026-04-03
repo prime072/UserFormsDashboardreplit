@@ -18,6 +18,7 @@ import {
   BorderStyle,
   AlignmentType,
   TextRun,
+  ImageRun,
 } from "docx";
 import jsPDF from "jspdf";
 import { useAuth } from "./auth-context";
@@ -119,6 +120,29 @@ export interface FormTableCell {
   imageWidth?: number;
   imageHeight?: number;
 }
+
+const imageDataUrl = (url: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Unable to render image"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject(new Error("Unable to load image"));
+    img.src = url;
+  });
+
+const isImageUrl = (value: unknown) =>
+  typeof value === "string" && /^https?:\/\//i.test(value);
 
 export interface FormTableRow {
   id: string;
@@ -666,6 +690,18 @@ export async function generateExcel(formTitle: string, responseData: any) {
     }
   });
 
+  Object.entries(responseData).forEach(([key, val]) => {
+    if (isImageUrl(val)) {
+      flattenedData[`${key} URL`] = val;
+    }
+  });
+
+  Object.entries(responseData).forEach(([key, val]) => {
+    if (typeof val === "string" && /^https?:\/\//i.test(val)) {
+      flattenedData[`${key} URL`] = val;
+    }
+  });
+
   const worksheet = XLSX.utils.json_to_sheet([flattenedData]);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Response");
@@ -691,10 +727,10 @@ export async function generateDocx(
       }
       const bodyRows = await Promise.all(
         gridConfig.rows.map(
-          async (row) =>
+          async (row: any) =>
             new TableRow({
               children: await Promise.all(
-                row.cells.map(async (cell) => {
+                row.cells.map(async (cell: any) => {
                   let value = cell.value;
                   if (cell.type === "variable") {
                     const rawVal = responseData[cell.value];
@@ -710,6 +746,8 @@ export async function generateDocx(
                     } else {
                       value = String(rawVal || "");
                     }
+                  } else if (cell.type === "image") {
+                    value = "";
                   } else if (
                     cell.type === "lookup" ||
                     cell.type === "formula" ||
@@ -717,6 +755,34 @@ export async function generateDocx(
                     cell.type === "hmr_calc"
                   ) {
                     value = (resolvedLookups && resolvedLookups[gridIdx] && resolvedLookups[gridIdx][cell.id]) || "0";
+                  }
+
+                  if (cell.type === "image" && cell.value) {
+                    try {
+                      const dataUrl = await imageDataUrl(cell.value);
+                      return new TableCell({
+                        children: [
+                          new Paragraph({
+                            children: [
+                              new ImageRun({
+                                data: dataUrl,
+                                type: "png",
+                                transformation: {
+                                  width: cell.imageWidth || 120,
+                                  height: cell.imageHeight || 120,
+                                },
+                              }),
+                            ],
+                          }),
+                        ],
+                        shading: cell.color
+                          ? { fill: cell.color.replace("#", "") }
+                          : undefined,
+                        columnSpan: cell.colspan || 1,
+                      });
+                    } catch {
+                      value = cell.value;
+                    }
                   }
 
                   const textLines = String(value).split("\n");
@@ -748,7 +814,7 @@ export async function generateDocx(
             }),
         ),
       );
-      const rows = [];
+      const rows: any[] = [];
       if (gridConfig.tableName) {
         rows.push(
           new TableRow({
@@ -778,7 +844,7 @@ export async function generateDocx(
         rows.push(
           new TableRow({
             children: gridConfig.headers.map(
-              (h) =>
+              (h: any) =>
                 new TableCell({
                   children: [
                     new Paragraph({
@@ -946,7 +1012,7 @@ export async function generatePdf(
       for (const row of gridConfig.rows) {
         let maxHeight = 10;
         const cellValues = await Promise.all(
-          row.cells.map(async (cell) => {
+          row.cells.map(async (cell: any) => {
             let val = cell.value;
             if (cell.type === "variable") {
               const rawVal = responseData[cell.value];
@@ -961,6 +1027,8 @@ export async function generatePdf(
               } else {
                 val = String(rawVal || "");
               }
+          } else if (cell.type === "image") {
+            val = cell.value ? "IMAGE" : "";
             } else if (
               cell.type === "lookup" ||
               cell.type === "formula" ||
@@ -973,7 +1041,7 @@ export async function generatePdf(
           }),
         );
 
-        row.cells.forEach((cell, i) => {
+        row.cells.forEach((cell: any, i: number) => {
           const val = String(cellValues[i]);
           const splitVal = doc.splitTextToSize(
             val,
@@ -1012,8 +1080,19 @@ export async function generatePdf(
           doc.setFont("helvetica", style);
           doc.setFontSize(cell.fontSize || 10);
 
-          const splitVal = doc.splitTextToSize(val, cw - 4);
-          doc.text(splitVal, x + 2, y + 7);
+          if (cell.type === "image" && cell.value) {
+            try {
+              const width = cell.imageWidth || Math.min(cw - 4, 120);
+              const height = cell.imageHeight || 80;
+              doc.addImage(cell.value, "PNG", x + 2, y + 2, width, height);
+            } catch {
+              const splitVal = doc.splitTextToSize(val, cw - 4);
+              doc.text(splitVal, x + 2, y + 7);
+            }
+          } else {
+            const splitVal = doc.splitTextToSize(val, cw - 4);
+            doc.text(splitVal, x + 2, y + 7);
+          }
           x += cw;
         });
         y += maxHeight;
