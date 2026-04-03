@@ -702,12 +702,6 @@ export async function generateExcel(formTitle: string, responseData: any) {
   });
 
   Object.entries(responseData).forEach(([key, val]) => {
-    if (isImageUrl(val)) {
-      flattenedData[`${key} URL`] = val;
-    }
-  });
-
-  Object.entries(responseData).forEach(([key, val]) => {
     if (typeof val === "string" && /^https?:\/\//i.test(val)) {
       flattenedData[`${key} URL`] = val;
     }
@@ -758,7 +752,7 @@ export async function generateDocx(
                       value = String(rawVal || "");
                     }
                   } else if (cell.type === "image") {
-                    value = cell.value;
+                    value = "";
                   } else if (
                     cell.type === "lookup" ||
                     cell.type === "formula" ||
@@ -771,6 +765,7 @@ export async function generateDocx(
                   if (cell.type === "image" && cell.value) {
                     try {
                       const dataUrl = isDataImage(cell.value) ? cell.value : await imageDataUrl(cell.value);
+                      if (!dataUrl) throw new Error("Missing image data");
                       return new TableCell({
                         children: [
                           new Paragraph({
@@ -791,7 +786,7 @@ export async function generateDocx(
                         columnSpan: cell.colspan || 1,
                       });
                     } catch {
-                      value = cell.value;
+                      value = "";
                     }
                   }
 
@@ -1038,7 +1033,7 @@ export async function generatePdf(
                 val = String(rawVal || "");
               }
           } else if (cell.type === "image") {
-            val = cell.value ? "" : "";
+            val = "";
             } else if (
               cell.type === "lookup" ||
               cell.type === "formula" ||
@@ -1096,6 +1091,7 @@ export async function generatePdf(
               const height = cell.imageHeight || 80;
               const dataUrl = isDataImage(cell.value) ? cell.value : await imageDataUrl(cell.value);
               const format = guessImageFormat(dataUrl);
+              if (!dataUrl) throw new Error("Missing image data");
               doc.addImage(dataUrl, format, x + 2, y + 2, width, height);
             } catch {
               const splitVal = doc.splitTextToSize(val, cw - 4);
