@@ -161,129 +161,122 @@ export default function ResponsesView() {
           </div>
         )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle>All Responses</CardTitle>
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Search responses..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="max-w-xs h-8"
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {filteredResponses.length === 0 ? (
-              <p className="text-slate-500 text-center py-8">No responses found</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      {Object.keys(filteredResponses[0]?.data || {}).map((key) => (
-                        <TableHead key={key}>{key}</TableHead>
-                      ))}
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredResponses.map(response => (
-                      <TableRow key={response.id}>
-                        {Object.entries(response.data).map(([key, value]) => (
-                          <TableCell key={`${response.id}-${key}`}>
-                            {editingId === response.id ? (
-                              <Input
-                                value={editData[key] || ""}
-                                onChange={(e) => setEditData({ ...editData, [key]: e.target.value })}
-                                className="text-sm"
-                                data-testid={`input-edit-${key}`}
-                              />
-                            ) : (
-                              <div className="space-y-1">
-                                <span className="text-sm">{String(value || "-")}</span>
-                                {key.toLowerCase().includes('date') && value && (
-                                  <div className="flex gap-1 mt-1">
-                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                      const newData = { ...response.data, [key]: addDaysToDate(String(value), 1) };
-                                      updateResponse(response.id, newData);
-                                    }} title="Add 1 day"><Plus className="h-3 w-3" /></Button>
-                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                      const newData = { ...response.data, [key]: addDaysToDate(String(value), -1) };
-                                      updateResponse(response.id, newData);
-                                    }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
-                                    <span className="text-[10px] text-muted-foreground self-center ml-1">Days</span>
-                                  </div>
-                                )}
-                                {/hmr|reading/i.test(key) && value && typeof value === 'string' && value.includes(':') && (
-                                  <div className="flex gap-1 mt-1">
-                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                      const newData = { ...response.data, [key]: calculateHmr(String(value), 60) };
-                                      updateResponse(response.id, newData);
-                                    }} title="Add 1 hour"><Plus className="h-3 w-3" /></Button>
-                                    <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                      const newData = { ...response.data, [key]: calculateHmr(String(value), -60) };
-                                      updateResponse(response.id, newData);
-                                    }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
-                                    <span className="text-[10px] text-muted-foreground self-center ml-1">Hrs</span>
-                                  </div>
-                                )}
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Search responses..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-xs h-8"
+          />
+        </div>
+        {filteredResponses.length === 0 ? (
+          <p className="text-slate-500 text-center py-8">No responses found</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {Object.keys(filteredResponses[0]?.data || {}).map((key) => (
+                    <TableHead key={key}>{key}</TableHead>
+                  ))}
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredResponses.map(response => (
+                  <TableRow key={response.id}>
+                    {Object.entries(response.data).map(([key, value]) => (
+                      <TableCell key={`${response.id}-${key}`}>
+                        {editingId === response.id ? (
+                          <Input
+                            value={editData[key] || ""}
+                            onChange={(e) => setEditData({ ...editData, [key]: e.target.value })}
+                            className="text-sm"
+                            data-testid={`input-edit-${key}`}
+                          />
+                        ) : (
+                          <div className="space-y-1">
+                            <span className="text-sm">{String(value || "-")}</span>
+                            {key.toLowerCase().includes('date') && value && (
+                              <div className="flex gap-1 mt-1">
+                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
+                                  const newData = { ...response.data, [key]: addDaysToDate(String(value), 1) };
+                                  updateResponse(response.id, newData);
+                                }} title="Add 1 day"><Plus className="h-3 w-3" /></Button>
+                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
+                                  const newData = { ...response.data, [key]: addDaysToDate(String(value), -1) };
+                                  updateResponse(response.id, newData);
+                                }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
+                                <span className="text-[10px] text-muted-foreground self-center ml-1">Days</span>
                               </div>
                             )}
-                          </TableCell>
-                        ))}
-                        <TableCell className="text-right">
-                          {isSuspended ? (
-                            <span className="text-xs text-slate-500">View Only</span>
-                          ) : editingId === response.id ? (
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSaveEdit(response.id)}
-                                data-testid="button-save-response"
-                              >
-                                <Save className="w-3 h-3 mr-1" /> Save
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setEditingId(null)}
-                                data-testid="button-cancel-edit"
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEdit(response.id, response.data)}
-                                data-testid={`button-edit-${response.id}`}
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-red-500 hover:text-red-600"
-                                onClick={() => handleDeleteResponse(response.id)}
-                                data-testid={`button-delete-${response.id}`}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                            {/hmr|reading/i.test(key) && value && typeof value === 'string' && value.includes(':') && (
+                              <div className="flex gap-1 mt-1">
+                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
+                                  const newData = { ...response.data, [key]: calculateHmr(String(value), 60) };
+                                  updateResponse(response.id, newData);
+                                }} title="Add 1 hour"><Plus className="h-3 w-3" /></Button>
+                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
+                                  const newData = { ...response.data, [key]: calculateHmr(String(value), -60) };
+                                  updateResponse(response.id, newData);
+                                }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
+                                <span className="text-[10px] text-muted-foreground self-center ml-1">Hrs</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
                     ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    <TableCell className="text-right">
+                      {isSuspended ? (
+                        <span className="text-xs text-slate-500">View Only</span>
+                      ) : editingId === response.id ? (
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSaveEdit(response.id)}
+                            data-testid="button-save-response"
+                          >
+                            <Save className="w-3 h-3 mr-1" /> Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingId(null)}
+                            data-testid="button-cancel-edit"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(response.id, response.data)}
+                            data-testid={`button-edit-${response.id}`}
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-500 hover:text-red-600"
+                            onClick={() => handleDeleteResponse(response.id)}
+                            data-testid={`button-delete-${response.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </Layout>
   );
