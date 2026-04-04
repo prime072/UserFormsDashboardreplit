@@ -123,7 +123,7 @@ export interface FormTableCell {
 }
 
 const imageDataUrl = async (url: string): Promise<string> => {
-  const response = await fetch(url, { mode: "cors" });
+  const response = await fetch(url);
   if (!response.ok) throw new Error("Unable to load image");
   const blob = await response.blob();
   return await new Promise((resolve, reject) => {
@@ -139,6 +139,12 @@ const isImageUrl = (value: unknown) =>
 const isDataImage = (value: unknown) =>
   typeof value === "string" && value.startsWith("data:image/");
 const cellImageSource = (cell: any) => cell.imageData || cell.value || "";
+const toStoredImage = async (cell: any) => {
+  const source = cellImageSource(cell);
+  if (!source) return "";
+  if (isDataImage(source)) return source;
+  return await imageDataUrl(source);
+};
 const guessImageFormat = (value: string) => {
   if (value.startsWith("data:image/jpeg")) return "JPEG";
   if (value.startsWith("data:image/jpg")) return "JPEG";

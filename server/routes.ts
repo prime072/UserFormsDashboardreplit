@@ -181,7 +181,28 @@ export async function registerRoutes(app: express.Express): Promise<void> {
 
   app.post("/api/responses", async (req, res) => {
     try {
-      const validatedData = insertResponseSchema.parse(req.body);
+      const payload = { ...req.body };
+      if (payload?.data && typeof payload.data === "object") {
+        for (const [key, value] of Object.entries(payload.data)) {
+          if (typeof value === "string" && /^https?:\/\//i.test(value)) {
+            try {
+              const response = await fetch(value);
+              if (!response.ok) continue;
+              const blob = await response.blob();
+              const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(String(reader.result || ""));
+                reader.onerror = () => reject(new Error("Unable to read image"));
+                reader.readAsDataURL(blob);
+              });
+              payload.data[key] = base64;
+            } catch {
+              continue;
+            }
+          }
+        }
+      }
+      const validatedData = insertResponseSchema.parse(payload);
       const response = await storage.createResponse(validatedData);
       res.status(201).json(response);
     } catch (error) {
