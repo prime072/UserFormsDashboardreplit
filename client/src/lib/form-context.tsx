@@ -122,25 +122,17 @@ export interface FormTableCell {
   imageData?: string;
 }
 
-const imageDataUrl = (url: string): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Unable to render image"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = () => reject(new Error("Unable to load image"));
-    img.src = url;
+const imageDataUrl = async (url: string): Promise<string> => {
+  const response = await fetch(url, { mode: "cors" });
+  if (!response.ok) throw new Error("Unable to load image");
+  const blob = await response.blob();
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Unable to read image"));
+    reader.readAsDataURL(blob);
   });
+};
 
 const isImageUrl = (value: unknown) =>
   typeof value === "string" && /^https?:\/\//i.test(value);
@@ -162,6 +154,13 @@ const dataUrlToBuffer = (dataUrl: string) => {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
+};
+const dataUrlToUint8Array = (dataUrl: string) => {
+  const base64 = dataUrl.split(",")[1] || "";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 };
 const fitImageToCell = (imageWidth: number, imageHeight: number, cellWidth: number, cellHeight: number) => {
   const padding = 4;
@@ -791,12 +790,14 @@ export async function generateDocx(
                       const dataUrl = await resolveImageDataUrl(src);
                       if (!dataUrl) throw new Error("Missing image data");
                       const dims = fitImageToCell(cell.imageWidth || 120, cell.imageHeight || 120, 120, 120);
+                      const format = guessImageFormat(dataUrl);
                       return new TableCell({
                         children: [
                           new Paragraph({
                             children: [
                               new ImageRun({
-                                data: dataUrlToBuffer(dataUrl),
+                                data: dataUrlToUint8Array(dataUrl),
+                                format,
                                 transformation: {
                                   width: dims.width,
                                   height: dims.height,
