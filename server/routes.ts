@@ -316,13 +316,38 @@ export async function registerRoutes(app: express.Express): Promise<void> {
           } as any);
         }
       }
+      const imageRows = Array.isArray(data)
+        ? await Promise.all(
+            data.map(async (row: any) => {
+              const imageFields = Object.entries(row || {}).filter(([, value]) => typeof value === "string" && /^https?:\/\//i.test(value));
+              const resolvedImages: Record<string, string> = {};
+              for (const [key, value] of imageFields) {
+                try {
+                  const response = await fetch(String(value));
+                  if (!response.ok) continue;
+                  const blob = await response.blob();
+                  const base64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(String(reader.result || ""));
+                    reader.onerror = () => reject(new Error("Unable to read image"));
+                    reader.readAsDataURL(blob);
+                  });
+                  resolvedImages[key] = base64;
+                } catch {
+                  continue;
+                }
+              }
+              return Object.keys(resolvedImages).length ? resolvedImages : null;
+            }),
+          )
+        : [];
       await storage.createUserDatabase({
         userId,
         name,
         description,
         config,
         data,
-        imageData,
+        imageData: imageData || imageRows.filter(Boolean),
       } as any);
       res.status(201).json({
         id: form.id,
@@ -331,7 +356,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
         description,
         config,
         data: { formId: form.id, rows: Array.isArray(data) ? data.length : 0 },
-        imageData,
+        imageData: imageData || imageRows.filter(Boolean),
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to create database" });
