@@ -156,6 +156,23 @@ const guessImageFormat = (value: string) => {
   if (value.startsWith("data:image/x-icon") || value.startsWith("data:image/vnd.microsoft.icon")) return "PNG";
   return "PNG";
 };
+const dataUrlToBuffer = (dataUrl: string) => {
+  const base64 = dataUrl.split(",")[1] || "";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+};
+const fitImageToCell = (imageWidth: number, imageHeight: number, cellWidth: number, cellHeight: number) => {
+  const padding = 4;
+  const maxWidth = Math.max(1, cellWidth - padding);
+  const maxHeight = Math.max(1, cellHeight - padding);
+  const ratio = Math.min(maxWidth / imageWidth, maxHeight / imageHeight, 1);
+  return {
+    width: Math.max(1, imageWidth * ratio),
+    height: Math.max(1, imageHeight * ratio),
+  };
+};
 
 export interface FormTableRow {
   id: string;
@@ -769,15 +786,16 @@ export async function generateDocx(
                       const src = cellImageSource(cell);
                       const dataUrl = isDataImage(src) ? src : await imageDataUrl(src);
                       if (!dataUrl) throw new Error("Missing image data");
+                      const dims = fitImageToCell(cell.imageWidth || 120, cell.imageHeight || 120, 120, 120);
                       return new TableCell({
                         children: [
                           new Paragraph({
                             children: [
                               new ImageRun({
-                                data: dataUrl,
+                                data: dataUrlToBuffer(dataUrl),
                                 transformation: {
-                                  width: cell.imageWidth || 120,
-                                  height: cell.imageHeight || 120,
+                                  width: dims.width,
+                                  height: dims.height,
                                 },
                               }),
                             ],
@@ -1090,13 +1108,12 @@ export async function generatePdf(
 
           if (cell.type === "image" && cellImageSource(cell)) {
             try {
-              const width = cell.imageWidth || Math.min(cw - 4, 120);
-              const height = cell.imageHeight || 80;
               const src = cellImageSource(cell);
               const dataUrl = isDataImage(src) ? src : await imageDataUrl(src);
+              const fitted = fitImageToCell(cell.imageWidth || 120, cell.imageHeight || 120, cw, maxHeight);
               const format = guessImageFormat(dataUrl);
               if (!dataUrl) throw new Error("Missing image data");
-              doc.addImage(dataUrl, format, x + 2, y + 2, width, height);
+              doc.addImage(dataUrl, format, x + 2, y + 2, fitted.width, fitted.height);
             } catch {
               const splitVal = doc.splitTextToSize(val, cw - 4);
               doc.text(splitVal, x + 2, y + 7);
