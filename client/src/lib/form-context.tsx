@@ -119,6 +119,7 @@ export interface FormTableCell {
   colspan?: number;
   imageWidth?: number;
   imageHeight?: number;
+  imageData?: string;
 }
 
 const imageDataUrl = (url: string): Promise<string> =>
@@ -145,6 +146,7 @@ const isImageUrl = (value: unknown) =>
   typeof value === "string" && /^https?:\/\//i.test(value);
 const isDataImage = (value: unknown) =>
   typeof value === "string" && value.startsWith("data:image/");
+const cellImageSource = (cell: any) => cell.imageData || cell.value || "";
 const guessImageFormat = (value: string) => {
   if (value.startsWith("data:image/jpeg")) return "JPEG";
   if (value.startsWith("data:image/jpg")) return "JPEG";
@@ -752,7 +754,7 @@ export async function generateDocx(
                       value = String(rawVal || "");
                     }
                   } else if (cell.type === "image") {
-                    value = "";
+                    value = cellImageSource(cell);
                   } else if (
                     cell.type === "lookup" ||
                     cell.type === "formula" ||
@@ -762,9 +764,10 @@ export async function generateDocx(
                     value = (resolvedLookups && resolvedLookups[gridIdx] && resolvedLookups[gridIdx][cell.id]) || "0";
                   }
 
-                  if (cell.type === "image" && cell.value) {
+                  if (cell.type === "image" && cellImageSource(cell)) {
                     try {
-                      const dataUrl = isDataImage(cell.value) ? cell.value : await imageDataUrl(cell.value);
+                      const src = cellImageSource(cell);
+                      const dataUrl = isDataImage(src) ? src : await imageDataUrl(src);
                       if (!dataUrl) throw new Error("Missing image data");
                       return new TableCell({
                         children: [
@@ -1085,11 +1088,12 @@ export async function generatePdf(
           doc.setFont("helvetica", style);
           doc.setFontSize(cell.fontSize || 10);
 
-          if (cell.type === "image" && cell.value) {
+          if (cell.type === "image" && cellImageSource(cell)) {
             try {
               const width = cell.imageWidth || Math.min(cw - 4, 120);
               const height = cell.imageHeight || 80;
-              const dataUrl = isDataImage(cell.value) ? cell.value : await imageDataUrl(cell.value);
+              const src = cellImageSource(cell);
+              const dataUrl = isDataImage(src) ? src : await imageDataUrl(src);
               const format = guessImageFormat(dataUrl);
               if (!dataUrl) throw new Error("Missing image data");
               doc.addImage(dataUrl, format, x + 2, y + 2, width, height);

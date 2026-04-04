@@ -283,7 +283,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
   app.post("/api/user-databases", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { name, description, config, data } = req.body;
+      const { name, description, config, data, imageData } = req.body;
       const headers = Array.isArray(config?.columns) ? config.columns : Object.keys(config?.columns || {});
       const form = await storage.createForm({
         userId,
@@ -316,6 +316,14 @@ export async function registerRoutes(app: express.Express): Promise<void> {
           } as any);
         }
       }
+      await storage.createUserDatabase({
+        userId,
+        name,
+        description,
+        config,
+        data,
+        imageData,
+      } as any);
       res.status(201).json({
         id: form.id,
         userId,
@@ -323,6 +331,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
         description,
         config,
         data: { formId: form.id, rows: Array.isArray(data) ? data.length : 0 },
+        imageData,
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to create database" });
