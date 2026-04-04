@@ -161,7 +161,7 @@ const dataUrlToBuffer = (dataUrl: string) => {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
+  return bytes.buffer;
 };
 const fitImageToCell = (imageWidth: number, imageHeight: number, cellWidth: number, cellHeight: number) => {
   const padding = 4;
@@ -172,6 +172,10 @@ const fitImageToCell = (imageWidth: number, imageHeight: number, cellWidth: numb
     width: Math.max(1, imageWidth * ratio),
     height: Math.max(1, imageHeight * ratio),
   };
+};
+const resolveImageDataUrl = async (src: string) => {
+  if (isDataImage(src)) return src;
+  return await imageDataUrl(src);
 };
 
 export interface FormTableRow {
@@ -784,7 +788,7 @@ export async function generateDocx(
                   if (cell.type === "image" && cellImageSource(cell)) {
                     try {
                       const src = cellImageSource(cell);
-                      const dataUrl = isDataImage(src) ? src : await imageDataUrl(src);
+                      const dataUrl = await resolveImageDataUrl(src);
                       if (!dataUrl) throw new Error("Missing image data");
                       const dims = fitImageToCell(cell.imageWidth || 120, cell.imageHeight || 120, 120, 120);
                       return new TableCell({
@@ -1109,7 +1113,7 @@ export async function generatePdf(
           if (cell.type === "image" && cellImageSource(cell)) {
             try {
               const src = cellImageSource(cell);
-              const dataUrl = isDataImage(src) ? src : await imageDataUrl(src);
+              const dataUrl = await resolveImageDataUrl(src);
               const fitted = fitImageToCell(cell.imageWidth || 120, cell.imageHeight || 120, cw, maxHeight);
               const format = guessImageFormat(dataUrl);
               if (!dataUrl) throw new Error("Missing image data");
