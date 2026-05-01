@@ -21,7 +21,11 @@ function UserDatabaseCard({ db }: { db: any }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-databases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/forms-database"] });
       toast({ title: "Success", description: "Database deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete database", variant: "destructive" });
     },
   });
 
@@ -56,7 +60,11 @@ function UserDatabaseCard({ db }: { db: any }) {
             <span>{Object.keys(db.config?.columns || {}).length} Columns</span>
           </div>
         </div>
-        <Button variant="outline" className="w-full">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/user-databases"] })}
+        >
           Manage Data
         </Button>
       </CardContent>
