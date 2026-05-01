@@ -122,29 +122,9 @@ export interface FormTableCell {
   imageData?: string;
 }
 
-const imageDataUrl = async (url: string): Promise<string> => {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error("Unable to load image");
-  const blob = await response.blob();
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Unable to read image"));
-    reader.readAsDataURL(blob);
-  });
-};
-
-const isImageUrl = (value: unknown) =>
-  typeof value === "string" && /^https?:\/\//i.test(value);
 const isDataImage = (value: unknown) =>
   typeof value === "string" && value.startsWith("data:image/");
 const cellImageSource = (cell: any) => cell.imageData || cell.value || "";
-const toStoredImage = async (cell: any) => {
-  const source = cellImageSource(cell);
-  if (!source) return "";
-  if (isDataImage(source)) return source;
-  return await imageDataUrl(source);
-};
 const guessImageFormat = (value: string) => {
   if (value.startsWith("data:image/jpeg")) return "JPEG";
   if (value.startsWith("data:image/jpg")) return "JPEG";
@@ -180,7 +160,7 @@ const fitImageToCell = (imageWidth: number, imageHeight: number, cellWidth: numb
 };
 const resolveImageDataUrl = async (src: string) => {
   if (isDataImage(src)) return src;
-  return await imageDataUrl(src);
+  return "";
 };
 
 export interface FormTableRow {

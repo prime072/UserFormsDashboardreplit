@@ -181,28 +181,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
 
   app.post("/api/responses", async (req, res) => {
     try {
-      const payload = { ...req.body };
-      if (payload?.data && typeof payload.data === "object") {
-        for (const [key, value] of Object.entries(payload.data)) {
-          if (typeof value === "string" && /^https?:\/\//i.test(value)) {
-            try {
-              const response = await fetch(value);
-              if (!response.ok) continue;
-              const blob = await response.blob();
-              const base64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(String(reader.result || ""));
-                reader.onerror = () => reject(new Error("Unable to read image"));
-                reader.readAsDataURL(blob);
-              });
-              payload.data[key] = base64;
-            } catch {
-              continue;
-            }
-          }
-        }
-      }
-      const validatedData = insertResponseSchema.parse(payload);
+      const validatedData = insertResponseSchema.parse(req.body);
       const response = await storage.createResponse(validatedData);
       res.status(201).json(response);
     } catch (error) {
@@ -304,7 +283,7 @@ export async function registerRoutes(app: express.Express): Promise<void> {
   app.post("/api/user-databases", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { name, description, config, data, imageData } = req.body;
+      const { name, description, config, data } = req.body;
       const headers = Array.isArray(config?.columns) ? config.columns : Object.keys(config?.columns || {});
       const form = await storage.createForm({
         userId,
@@ -337,38 +316,12 @@ export async function registerRoutes(app: express.Express): Promise<void> {
           } as any);
         }
       }
-      const imageRows = Array.isArray(data)
-        ? await Promise.all(
-            data.map(async (row: any) => {
-              const imageFields = Object.entries(row || {}).filter(([, value]) => typeof value === "string" && /^https?:\/\//i.test(value));
-              const resolvedImages: Record<string, string> = {};
-              for (const [key, value] of imageFields) {
-                try {
-                  const response = await fetch(String(value));
-                  if (!response.ok) continue;
-                  const blob = await response.blob();
-                  const base64 = await new Promise<string>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(String(reader.result || ""));
-                    reader.onerror = () => reject(new Error("Unable to read image"));
-                    reader.readAsDataURL(blob);
-                  });
-                  resolvedImages[key] = base64;
-                } catch {
-                  continue;
-                }
-              }
-              return Object.keys(resolvedImages).length ? resolvedImages : null;
-            }),
-          )
-        : [];
       await storage.createUserDatabase({
         userId,
         name,
         description,
         config,
         data,
-        imageData: imageData || imageRows.filter(Boolean),
       } as any);
       res.status(201).json({
         id: form.id,
@@ -377,7 +330,6 @@ export async function registerRoutes(app: express.Express): Promise<void> {
         description,
         config,
         data: { formId: form.id, rows: Array.isArray(data) ? data.length : 0 },
-        imageData: imageData || imageRows.filter(Boolean),
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to create database" });
