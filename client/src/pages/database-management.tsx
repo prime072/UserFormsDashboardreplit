@@ -16,7 +16,10 @@ function UserDatabaseCard({ db }: { db: any }) {
   const { toast } = useToast();
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/user-databases/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/user-databases/${id}`, {
+        method: "DELETE",
+        headers: { "x-user-id": useAuth().user?.id || "" },
+      });
       if (!res.ok) throw new Error("Failed to delete database");
     },
     onSuccess: () => {
@@ -28,6 +31,7 @@ function UserDatabaseCard({ db }: { db: any }) {
       toast({ title: "Error", description: "Failed to delete database", variant: "destructive" });
     },
   });
+  const { user } = useAuth();
 
   return (
     <Card key={db.id} data-testid={`card-user-db-${db.id}`} className="shadow-md hover:shadow-lg transition-shadow">
@@ -63,7 +67,7 @@ function UserDatabaseCard({ db }: { db: any }) {
         <Button
           variant="outline"
           className="w-full"
-          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/user-databases"] })}
+          onClick={() => window.location.href = `/databases/${db.id}`}
         >
           Manage Data
         </Button>
