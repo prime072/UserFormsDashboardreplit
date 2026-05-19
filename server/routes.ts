@@ -15,7 +15,56 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+function isAdminAuthenticated(req: Request, res: Response, next: NextFunction) {
+  const adminSession = req.headers["x-admin-session"] as string;
+  if (!adminSession) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  next();
+}
+
 export async function registerRoutes(app: express.Express): Promise<void> {
+
+  app.get("/api/admin/users", isAdminAuthenticated, async (req, res) => {
+    try {
+      const users = await (storage as any).getAllUsers?.();
+      res.json(users || []);
+    } catch (error) {
+      console.error("Error fetching admin users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/admin/users/:id", isAdminAuthenticated, async (req, res) => {
+    try {
+      const updates = {
+        status: req.body.status,
+        totalForms: req.body.totalForms,
+        totalResponses: req.body.totalResponses,
+      };
+      const user = await (storage as any).updateUser?.(req.params.id, updates);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating admin user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/admin/users/:id", isAdminAuthenticated, async (req, res) => {
+    try {
+      const deleted = await (storage as any).deleteUser?.(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting admin user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
 
   // Form Routes
   app.get("/api/forms", isAuthenticated, async (req, res) => {
@@ -114,7 +163,6 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
-  // Response Routes
   app.get("/api/forms/:id/responses", async (req, res) => {
     try {
       const formId = req.params.id;
@@ -189,7 +237,6 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
-  // User Responses Routes
   app.get("/api/user/responses", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
@@ -222,7 +269,6 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
-  // Form Stats
   app.get("/api/forms/:id/stats", async (req, res) => {
     try {
       const formId = req.params.id;
@@ -242,7 +288,6 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
-  // Database Management Routes
   app.get("/api/forms-database", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
@@ -259,92 +304,31 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
-  app.get("/api/user-databases", isAuthenticated, async (req, res) => {
+  app.get("/api/responses/:id", async (req, res) => {
     try {
-      const userId = getUserId(req);
-      const dbs = await storage.getUserDatabasesByUserId(userId);
-      res.json(dbs);
+      const response = await storage.getResponse(req.params.id);
+      if (!response) return res.status(404).json({ message: "Response not found" });
+      res.json(response);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch databases" });
+      res.status(500).json({ message: "Failed to fetch response" });
     }
   });
 
-  app.get("/api/user-databases/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/responses/:id", async (req, res) => {
     try {
-      const userId = getUserId(req);
-      const db = await storage.getUserDatabase(req.params.id);
-      if (!db || db.userId !== userId) return res.status(403).json({ message: "Forbidden" });
-      res.json(db);
+      const response = await storage.updateResponse(req.params.id, req.body.data);
+      res.json(response);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch database" });
+      res.status(500).json({ message: "Failed to update response" });
     }
   });
 
-  app.post("/api/user-databases", isAuthenticated, async (req, res) => {
+  app.delete("/api/responses/:id", async (req, res) => {
     try {
-      const userId = getUserId(req);
-      const { name, description, config, data } = req.body;
-      const headers = Array.isArray(config?.columns) ? config.columns : Object.keys(config?.columns || {});
-      const form = await storage.createForm({
-        userId,
-        title: name,
-        status: "Active",
-        visibility: "public",
-        canPrivateUserViewResponses: "false",
-        fields: headers.map((header: string, index: number) => ({
-          id: `excel_${index}_${header.replace(/[^a-zA-Z0-9]/g, "_")}`,
-          type: "text",
-          label: header,
-          required: false,
-          options: [],
-        })),
-        outputFormats: ["thank_you"],
-        confirmationStyle: "table",
-        confirmationText: "",
-        tableConfig: [],
-        gridConfig: null,
-        gridConfigs: [],
-        whatsappFormat: "",
-        allowEditing: "true",
-      } as any);
-
-      if (Array.isArray(data)) {
-        for (const row of data) {
-          await storage.createResponse({
-            formId: form.id,
-            data: row,
-          } as any);
-        }
-      }
-      await storage.createUserDatabase({
-        userId,
-        name,
-        description,
-        config,
-        data,
-      } as any);
-      res.status(201).json({
-        id: form.id,
-        userId,
-        name,
-        description,
-        config,
-        data: { formId: form.id, rows: Array.isArray(data) ? data.length : 0 },
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create database" });
-    }
-  });
-
-  app.delete("/api/user-databases/:id", isAuthenticated, async (req, res) => {
-    try {
-      const userId = getUserId(req);
-      const db = await storage.getUserDatabase(req.params.id);
-      if (!db || db.userId !== userId) return res.status(403).json({ message: "Forbidden" });
-      await storage.deleteUserDatabase(req.params.id);
+      await storage.deleteResponse(req.params.id);
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete database" });
+      res.status(500).json({ message: "Failed to delete response" });
     }
   });
 }
