@@ -288,6 +288,88 @@ export async function registerRoutes(app: express.Express): Promise<void> {
     }
   });
 
+  // User Database routes (Excel-uploaded databases)
+  app.get("/api/user-databases", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const databases = await storage.getUserDatabasesByUserId(userId);
+      res.json(databases);
+    } catch (error) {
+      console.error("Error fetching user databases:", error);
+      res.status(500).json({ message: "Failed to fetch user databases" });
+    }
+  });
+
+  app.get("/api/user-databases/:id", async (req, res) => {
+    try {
+      const database = await storage.getUserDatabase(req.params.id);
+      if (!database) {
+        return res.status(404).json({ message: "Database not found" });
+      }
+      res.json(database);
+    } catch (error) {
+      console.error("Error fetching user database:", error);
+      res.status(500).json({ message: "Failed to fetch user database" });
+    }
+  });
+
+  app.post("/api/user-databases", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const { name, description, config, data } = req.body;
+      if (!name || !config || !data) {
+        return res.status(400).json({ message: "Missing required fields: name, config, data" });
+      }
+      const database = await storage.createUserDatabase({
+        userId,
+        name,
+        description: description || "",
+        config,
+        data,
+      });
+      res.status(201).json(database);
+    } catch (error) {
+      console.error("Error creating user database:", error);
+      res.status(500).json({ message: "Failed to create user database" });
+    }
+  });
+
+  app.patch("/api/user-databases/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const existing = await storage.getUserDatabase(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const { name, description, config, data } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      if (config !== undefined) updates.config = config;
+      if (data !== undefined) updates.data = data;
+      const database = await storage.updateUserDatabase(req.params.id, updates);
+      res.json(database);
+    } catch (error) {
+      console.error("Error updating user database:", error);
+      res.status(500).json({ message: "Failed to update user database" });
+    }
+  });
+
+  app.delete("/api/user-databases/:id", isAuthenticated, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const existing = await storage.getUserDatabase(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      await storage.deleteUserDatabase(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user database:", error);
+      res.status(500).json({ message: "Failed to delete user database" });
+    }
+  });
+
   app.get("/api/forms-database", isAuthenticated, async (req, res) => {
     try {
       const userId = getUserId(req);
