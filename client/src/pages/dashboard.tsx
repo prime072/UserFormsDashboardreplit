@@ -6,7 +6,7 @@ import { Link, useLocation } from "wouter";
 import { useForms } from "@/lib/form-context";
 import { useAuth } from "@/lib/auth-context";
 import { formatDistanceToNow } from "date-fns";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,32 +38,12 @@ export default function Dashboard() {
   const { toast } = useToast();
   // ... rest of the code
   const [showSuspensionDialog, setShowSuspensionDialog] = useState(isSuspended);
-  const [liveResponses, setLiveResponses] = useState(0);
 
-  // Fetch live total responses from MongoDB
-  const fetchLiveResponses = async () => {
-    if (!user?.id) return;
-    try {
-      const response = await fetch("/api/user/total-responses", {
-        headers: { "x-user-id": user.id },
-      });
-      if (!response.ok) {
-        console.error("Failed to fetch live responses:", response.status, response.statusText);
-        return;
-      }
-      const data = await response.json();
-      setLiveResponses(data?.totalResponses || 0);
-    } catch (error) {
-      console.error("Error fetching live responses:", error instanceof Error ? error.message : error);
-    }
-  };
-
-  useEffect(() => {
-    fetchLiveResponses();
-  }, [user?.id]);
-
-  // Use cached metrics from user object
-  const cachedTotalForms = user?.totalForms || forms.length;
+  // Total forms/responses are derived live from the forms/responses already
+  // loaded in FormContext, instead of the stale per-login cached user
+  // metrics, so these counts update immediately as forms/responses change.
+  const liveTotalForms = forms.length;
+  const liveResponses = responses.length;
 
   // Get form limit from admin settings
   const adminUserMetrics = JSON.parse(sessionStorage.getItem("admin_users_metrics") || "[]");
@@ -78,7 +58,7 @@ export default function Dashboard() {
 
   const totalFormsStat = { 
     label: "Total Forms", 
-    value: cachedTotalForms.toString(), 
+    value: liveTotalForms.toString(), 
     icon: FileCheck, 
     color: "text-blue-600", 
     bg: "bg-blue-100" 
