@@ -244,8 +244,8 @@ export default function DatabaseManagement() {
           </div>
           <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Upload className="mr-2 h-4 w-4" /> Upload Excel
+              <Button type="button" data-testid="button-upload-database">
+                <Upload className="mr-2 h-4 w-4" /> Upload Database
               </Button>
             </DialogTrigger>
             <DialogContent>

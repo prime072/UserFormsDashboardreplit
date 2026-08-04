@@ -88,6 +88,9 @@ function Router() {
       <Route path="/databases">
         <ProtectedRoute component={DatabaseManagement} />
       </Route>
+      <Route path="/database-management">
+        <ProtectedRoute component={DatabaseManagement} />
+      </Route>
 
       {/* Admin Routes */}
       <Route path="/admin/login" component={AdminLogin} />
