@@ -180,6 +180,7 @@ export default function DatabaseManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user-databases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/forms-database"] });
       setIsUploadOpen(false);
       setDbName("");
       setSelectedFile(null);

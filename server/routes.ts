@@ -320,17 +320,55 @@ export async function registerRoutes(app: express.Express): Promise<void> {
       if (!name || !config || !data) {
         return res.status(400).json({ message: "Missing required fields: name, config, data" });
       }
-      const database = await storage.createUserDatabase({
+
+      // Uploading a database creates a real form (a "form database") whose
+      // fields mirror the uploaded columns, with each row saved as a response.
+      const headers: string[] = Array.isArray(config?.columns)
+        ? config.columns
+        : Object.keys(config?.columns || {});
+
+      const form = await storage.createForm({
+        userId,
+        title: name,
+        status: "Active",
+        visibility: "public",
+        canPrivateUserViewResponses: "false",
+        fields: headers.map((header: string, index: number) => ({
+          id: `excel_${index}_${header.replace(/[^a-zA-Z0-9]/g, "_")}`,
+          type: "text",
+          label: header,
+          required: false,
+          options: [],
+        })),
+        outputFormats: ["thank_you"],
+        confirmationStyle: "table",
+        confirmationText: "",
+        tableConfig: [],
+        gridConfig: null,
+        gridConfigs: [],
+        whatsappFormat: "",
+        allowEditing: true,
+      } as any);
+
+      const rows = Array.isArray(data) ? data : [];
+      for (const row of rows) {
+        await storage.createResponse({
+          formId: form.id,
+          data: row,
+        } as any);
+      }
+
+      res.status(201).json({
+        id: form.id,
         userId,
         name,
-        description: description || "",
+        description,
         config,
-        data,
+        data: { formId: form.id, rows: rows.length },
       });
-      res.status(201).json(database);
     } catch (error) {
-      console.error("Error creating user database:", error);
-      res.status(500).json({ message: "Failed to create user database" });
+      console.error("Error creating database from upload:", error);
+      res.status(500).json({ message: "Failed to create database" });
     }
   });
 
