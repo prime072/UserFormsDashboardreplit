@@ -139,6 +139,7 @@ export default function DatabaseManagement() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [dbName, setDbName] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { data: formDatabases, isLoading: isLoadingForms } = useQuery<any[]>({
     queryKey: ["/api/forms-database"],
@@ -181,12 +182,20 @@ export default function DatabaseManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/user-databases"] });
       setIsUploadOpen(false);
       setDbName("");
+      setSelectedFile(null);
       toast({ title: "Success", description: "Database created from Excel" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create database from file", variant: "destructive" });
     },
   });
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFile(e.target.files?.[0] || null);
+  };
+
+  const handleUploadSubmit = () => {
+    const file = selectedFile;
     if (!file) return;
 
     const reader = new FileReader();
@@ -197,7 +206,10 @@ export default function DatabaseManagement() {
       const ws = wb.Sheets[wsname];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }) as any[][];
       const [headerRow, ...dataRows] = rows;
-      if (!headerRow || headerRow.length === 0) return;
+      if (!headerRow || headerRow.length === 0) {
+        toast({ title: "Error", description: "The file has no header row", variant: "destructive" });
+        return;
+      }
 
       const headers = headerRow.map((header) => String(header || "").trim()).filter(Boolean);
       const data = dataRows
@@ -242,7 +254,16 @@ export default function DatabaseManagement() {
             <h1 className="text-3xl font-bold tracking-tight">Database Management</h1>
             <p className="text-muted-foreground">Manage your form and uploaded databases.</p>
           </div>
-          <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+          <Dialog
+            open={isUploadOpen}
+            onOpenChange={(open) => {
+              setIsUploadOpen(open);
+              if (!open) {
+                setSelectedFile(null);
+                setDbName("");
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button type="button" data-testid="button-upload-database">
                 <Upload className="mr-2 h-4 w-4" /> Upload Database
@@ -270,9 +291,13 @@ export default function DatabaseManagement() {
                   <Input 
                     type="file" 
                     accept=".xlsx, .xls, .csv" 
-                    onChange={handleFileUpload}
+                    onChange={handleFileSelect}
                     disabled={createDbMutation.isPending}
+                    data-testid="input-database-file"
                   />
+                  {selectedFile && (
+                    <p className="text-xs text-muted-foreground">Selected: {selectedFile.name}</p>
+                  )}
                 </div>
               </div>
               {createDbMutation.isPending && (
@@ -281,6 +306,32 @@ export default function DatabaseManagement() {
                   <span className="ml-2">Processing file...</span>
                 </div>
               )}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsUploadOpen(false)}
+                  disabled={createDbMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleUploadSubmit}
+                  disabled={!selectedFile || createDbMutation.isPending}
+                  data-testid="button-submit-upload"
+                >
+                  {createDbMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" /> Upload
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
