@@ -1,0 +1,1 @@
+- [Per-user MongoDB data directories](mongo-per-user-directories.md) — forms/responses/databases/private-users live in one collection per user (`user_<id>_data`), not shared collections; resolve owner via `resource_index` before querying.

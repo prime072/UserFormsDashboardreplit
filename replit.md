@@ -29,6 +29,17 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM with drizzle-kit for migrations
 - **Alternative Storage**: MongoDB adapter available (mongo-storage.ts) for flexible deployment
 - **Session Storage**: connect-pg-simple for PostgreSQL session storage
+- **MongoDB layout (active storage for this project)**: each user has one dedicated
+  collection, `user_<userId>_data`, holding *all* of that user's forms, responses,
+  uploaded databases, and private-user sub-accounts together (distinguished by a
+  `kind` field). The shared `users` collection remains the account registry.
+  A small `resource_index` collection maps `{ id -> { kind, userId } }` (and,
+  for private users, `{ name -> userId }`) so routes that only receive an
+  id/name (public form pages, response edit links, private-user login) can find
+  which user's collection to look in, without storing any actual data there.
+  Legacy pre-migration collections are kept as `legacy_forms`, `legacy_responses`,
+  `legacy_private_users`, `legacy_user_databases` (renamed automatically, not
+  deleted) as a safety net.
 
 ### Authentication & Authorization
 - **User Auth**: Custom email/password authentication with bcrypt hashing
