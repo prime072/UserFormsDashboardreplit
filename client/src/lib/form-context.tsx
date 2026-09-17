@@ -23,6 +23,7 @@ import {
 } from "docx";
 import jsPDF from "jspdf";
 import { useAuth } from "./auth-context";
+import { addDaysToDate, calculateHmr, hmrToMinutes, minutesToHmr } from "@shared/schema";
 
 export type FieldType =
   | "text"
@@ -693,6 +694,148 @@ export function useForms() {
   return context;
 }
 
+export async function resolveFormGridLookups(
+  form: any,
+  responseData: Record<string, any>,
+  resolveLookup: (
+    lookupConfig: any,
+    currentFormData?: Record<string, any>,
+    cellValues?: Record<string, string>,
+  ) => Promise<string>,
+): Promise<Record<number, Record<string, string>>> {
+  const grids = form.gridConfigs && form.gridConfigs.length > 0
+    ? form.gridConfigs
+    : (form.gridConfig ? [form.gridConfig] : []);
+  const allLookups: Record<number, Record<string, string>> = {};
+
+  for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
+    const grid = grids[gridIdx];
+    if (!grid?.rows) continue;
+
+    const lookups: Record<string, string> = {};
+    const allCells = grid.rows.flatMap((row: any) => row.cells || []);
+
+    for (const cell of allCells) {
+      if (cell.type === "lookup" && cell.lookupConfig) {
+        try {
+          lookups[cell.id] = await resolveLookup(cell.lookupConfig, responseData, lookups);
+        } catch {
+          lookups[cell.id] = "0";
+        }
+      }
+    }
+
+    for (const cell of allCells) {
+      if ((cell.type === "date_calc" || cell.type === "hmr_calc") && cell.calcConfig) {
+        for (const lookupKey of ["lookup1", "lookup2"] as const) {
+          const lookupConfig = cell.calcConfig[lookupKey];
+          if (lookupConfig) {
+            try {
+              lookups[`${cell.id}_${lookupKey === "lookup1" ? "lk1" : "lk2"}`] =
+                await resolveLookup(lookupConfig, responseData, lookups);
+            } catch {
+              lookups[`${cell.id}_${lookupKey === "lookup1" ? "lk1" : "lk2"}`] = "0";
+            }
+          }
+        }
+      }
+    }
+
+    const resolveFormula = (expression: string): string => {
+      let evaluated = expression;
+      Object.entries(responseData).forEach(([key, value]) => {
+        const numericValue = isNaN(Number(value)) ? 0 : Number(value);
+        evaluated = evaluated.replace(new RegExp(`{{${key}}}`, "g"), String(numericValue));
+      });
+      Object.entries(lookups).forEach(([id, value]) => {
+        const numericValue = isNaN(Number(value)) ? 0 : Number(value);
+        evaluated = evaluated.replace(new RegExp(`\\[\\[${id}\\]\\]`, "g"), String(numericValue));
+      });
+
+      try {
+        const cleanExpression = evaluated.replace(/[^0-9+\-*/().\s]/g, "");
+        if (!cleanExpression) return "0";
+        const result = Function(`"use strict"; return (${cleanExpression})`)();
+        return isNaN(result) || !isFinite(result) ? "0" : String(result);
+      } catch {
+        return "0";
+      }
+    };
+
+    for (const cell of allCells) {
+      if (cell.type === "formula" && cell.formulaConfig) {
+        const rawValue = resolveFormula(cell.formulaConfig.expression);
+        lookups[cell.id] = parseFloat(rawValue).toFixed(cell.formulaConfig.precision ?? 2);
+      } else if (cell.type === "date_calc" && cell.calcConfig) {
+        let value1 = responseData[cell.calcConfig.field1];
+        if (String(cell.calcConfig.field1).startsWith("[[")) {
+          value1 = lookups[String(cell.calcConfig.field1).replace(/[\[\]]/g, "")];
+        } else if (cell.calcConfig.lookup1) {
+          value1 = lookups[`${cell.id}_lk1`];
+        }
+
+        if (value1) {
+          if (cell.calcConfig.field2 !== undefined) {
+            let value2 = responseData[cell.calcConfig.field2];
+            if (String(cell.calcConfig.field2).startsWith("[[")) {
+              value2 = lookups[String(cell.calcConfig.field2).replace(/[\[\]]/g, "")];
+            } else if (cell.calcConfig.lookup2) {
+              value2 = lookups[`${cell.id}_lk2`];
+            }
+
+            if (value1 && value2) {
+              const date1 = new Date(value1);
+              const date2 = new Date(value2);
+              lookups[cell.id] = !isNaN(date1.getTime()) && !isNaN(date2.getTime())
+                ? String(Math.round((date1.getTime() - date2.getTime()) / (1000 * 3600 * 24)) * (cell.calcConfig.operator === "+" ? 1 : -1))
+                : "Invalid Date";
+            }
+          } else {
+            const amount = parseInt(cell.calcConfig.value || "1");
+            lookups[cell.id] = addDaysToDate(value1, cell.calcConfig.operator === "+" ? amount : -amount);
+          }
+        }
+      } else if (cell.type === "hmr_calc" && cell.calcConfig) {
+        let value1 = responseData[cell.calcConfig.field1];
+        if (String(cell.calcConfig.field1).startsWith("[[")) {
+          value1 = lookups[String(cell.calcConfig.field1).replace(/[\[\]]/g, "")];
+        } else if (cell.calcConfig.lookup1) {
+          value1 = lookups[`${cell.id}_lk1`];
+        }
+
+        if (value1) {
+          if (cell.calcConfig.field2 !== undefined) {
+            let value2 = responseData[cell.calcConfig.field2];
+            if (String(cell.calcConfig.field2).startsWith("[[")) {
+              value2 = lookups[String(cell.calcConfig.field2).replace(/[\[\]]/g, "")];
+            } else if (cell.calcConfig.lookup2) {
+              value2 = lookups[`${cell.id}_lk2`];
+            }
+            if (value1 && value2) {
+              const minutes1 = hmrToMinutes(String(value1));
+              const minutes2 = hmrToMinutes(String(value2));
+              lookups[cell.id] = minutesToHmr(
+                cell.calcConfig.operator === "+" ? minutes1 + minutes2 : minutes1 - minutes2,
+              );
+            }
+          } else {
+            const amount = parseInt(cell.calcConfig.value || "1");
+            const minutes = cell.calcConfig.unit === "minutes" ? amount : amount * 60;
+            lookups[cell.id] = calculateHmr(
+              String(value1),
+              cell.calcConfig.operator === "+" ? minutes : -minutes,
+            );
+          }
+        }
+      }
+    }
+
+    allLookups[gridIdx] = lookups;
+  }
+
+  return allLookups;
+}
+
 const formatReportValue = (value: any): string => {
   if (Array.isArray(value)) {
     return value
@@ -876,6 +1019,394 @@ export async function generateResponsesPdf(form: any, responses: any[]) {
   });
 
   doc.save(`${form.title}-all-responses-${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+const replaceReportVariables = (text: string, responseData: Record<string, any>) => {
+  let result = text || "";
+  Object.entries(responseData).forEach(([key, value]) => {
+    result = result.split(`{{${key}}}`).join(formatReportValue(value));
+  });
+  return result;
+};
+
+const getCustomCellValue = (
+  cell: any,
+  responseData: Record<string, any>,
+  gridIdx: number,
+  resolvedLookups?: Record<number, Record<string, string>>,
+) => {
+  if (cell.type === "variable") {
+    return formatReportValue(responseData[cell.value]);
+  }
+  if (cell.type === "image") {
+    return cellImageSource(cell) ? "[Image]" : "";
+  }
+  if (
+    cell.type === "lookup" ||
+    cell.type === "formula" ||
+    cell.type === "date_calc" ||
+    cell.type === "hmr_calc"
+  ) {
+    return resolvedLookups?.[gridIdx]?.[cell.id] || "0";
+  }
+  return String(cell.value ?? "");
+};
+
+const addCustomDocxGrid = async (
+  children: any[],
+  grid: any,
+  responseData: Record<string, any>,
+  gridIdx: number,
+  resolvedLookups?: Record<number, Record<string, string>>,
+) => {
+  if (!grid) return false;
+  const rows: any[] = [];
+  const columnCount = Math.max(
+    grid.headers?.length || 0,
+    ...(grid.rows || []).map((row: any) => row.cells?.length || 0),
+    1,
+  );
+
+  if (grid.tableName) {
+    rows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: replaceReportVariables(grid.tableName, responseData), bold: true, size: 28 })],
+                alignment: AlignmentType.CENTER,
+              }),
+            ],
+            columnSpan: columnCount,
+            shading: { fill: "e2e8f0" },
+          }),
+        ],
+      }),
+    );
+  }
+
+  if (grid.showHeaders !== false && grid.headers?.length > 0) {
+    rows.push(
+      new TableRow({
+        children: grid.headers.map((header: string) =>
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: header, bold: true })] })],
+            shading: { fill: (grid.headerColor || "#f1f5f9").replace("#", "") },
+          }),
+        ),
+      }),
+    );
+  }
+
+  for (const row of grid.rows || []) {
+    const cells = [];
+    for (const cell of row.cells || []) {
+      let value = getCustomCellValue(cell, responseData, gridIdx, resolvedLookups);
+      if (cell.type === "image" && cellImageSource(cell)) {
+        try {
+          const dataUrl = await resolveImageDataUrl(cellImageSource(cell));
+          if (dataUrl) {
+            const dims = fitImageToCell(cell.imageWidth || 120, cell.imageHeight || 120, 120, 120);
+            cells.push(
+              new TableCell({
+                children: [
+                  new Paragraph({
+                    children: [
+                      new ImageRun({
+                        data: dataUrlToUint8Array(dataUrl),
+                        format: guessImageFormat(dataUrl),
+                        transformation: { width: dims.width, height: dims.height },
+                      }),
+                    ],
+                  }),
+                ],
+                shading: cell.color ? { fill: cell.color.replace("#", "") } : undefined,
+                columnSpan: cell.colspan || 1,
+              }),
+            );
+            continue;
+          }
+        } catch {
+          value = "";
+        }
+      }
+
+      cells.push(
+        new TableCell({
+          children: String(value).split("\n").map((line) =>
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: line,
+                  bold: cell.bold || row.isFooter,
+                  italics: cell.italic,
+                  size: (cell.fontSize || 12) * 2,
+                  color: cell.textColor ? cell.textColor.replace("#", "") : undefined,
+                }),
+              ],
+            }),
+          ),
+          shading: cell.color ? { fill: cell.color.replace("#", "") } : undefined,
+          columnSpan: cell.colspan || 1,
+        }),
+      );
+    }
+    if (cells.length > 0) rows.push(new TableRow({ children: cells }));
+  }
+
+  if (rows.length > 0) {
+    children.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+  }
+  if (grid.textBelow) {
+    children.push(new Paragraph({
+      text: replaceReportVariables(grid.textBelow, responseData),
+      spacing: { before: 200 },
+    }));
+  }
+  return rows.length > 0 || Boolean(grid.textAbove || grid.textBelow);
+};
+
+export async function generateResponsesDocxCustom(
+  form: any,
+  responses: any[],
+  resolvedLookupsByResponse: Record<number, Record<number, Record<string, string>>> = {},
+) {
+  const children: any[] = [
+    new Paragraph({
+      text: form.title,
+      heading: "Heading1",
+      alignment: AlignmentType.CENTER,
+    }),
+    new Paragraph({
+      text: `All responses • Custom layout • Generated: ${new Date().toLocaleString()}`,
+      alignment: AlignmentType.CENTER,
+    }),
+    new Paragraph(""),
+  ];
+  const grids = form.gridConfigs && form.gridConfigs.length > 0
+    ? form.gridConfigs
+    : (form.gridConfig ? [form.gridConfig] : []);
+
+  for (let responseIndex = 0; responseIndex < responses.length; responseIndex++) {
+    const response = responses[responseIndex];
+    children.push(
+      new Paragraph({ text: `Response ${responseIndex + 1}`, heading: "Heading2" }),
+      new Paragraph({
+        text: `Submitted: ${response.submittedAt ? new Date(response.submittedAt).toLocaleString() : ""}`,
+      }),
+    );
+
+    let rendered = false;
+    if (form.confirmationStyle === "paragraph" && form.confirmationText) {
+      children.push(new Paragraph({
+        text: replaceReportVariables(form.confirmationText, response.data || {}),
+      }));
+      rendered = true;
+    } else {
+      for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
+        const grid = grids[gridIdx];
+        if (grid?.textAbove) {
+          children.push(new Paragraph({
+            text: replaceReportVariables(grid.textAbove, response.data || {}),
+            spacing: { after: 200 },
+          }));
+        }
+        rendered = (await addCustomDocxGrid(
+          children,
+          grid,
+          response.data || {},
+          gridIdx,
+          resolvedLookupsByResponse[responseIndex],
+        )) || rendered;
+      }
+    }
+
+    if (!rendered) {
+      children.push(
+        new Table({
+          rows: Object.entries(response.data || {}).map(([key, value]) =>
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [new Paragraph({ children: [new TextRun({ text: key, bold: true })] })],
+                }),
+                new TableCell({ children: [new Paragraph({ text: formatReportValue(value) })] }),
+              ],
+            }),
+          ),
+          width: { size: 100, type: WidthType.PERCENTAGE },
+        }),
+      );
+    }
+
+    if (responseIndex < responses.length - 1) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+  }
+
+  const doc = new Document({ sections: [{ children }] });
+  const buffer = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(buffer);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${form.title}-all-responses-custom-${new Date().toISOString().split("T")[0]}.docx`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function generateResponsesPdfCustom(
+  form: any,
+  responses: any[],
+  resolvedLookupsByResponse: Record<number, Record<number, Record<string, string>>> = {},
+) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const left = 20;
+  const tableWidth = pageWidth - 40;
+  let y = 20;
+  const grids = form.gridConfigs && form.gridConfigs.length > 0
+    ? form.gridConfigs
+    : (form.gridConfig ? [form.gridConfig] : []);
+
+  const ensureSpace = (height: number) => {
+    if (y + height > pageHeight - 18) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+  const drawText = (text: string, x: number, width: number, style: string = "normal", size = 10) => {
+    doc.setFont("helvetica", style);
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(text, width);
+    ensureSpace(lines.length * 5 + 4);
+    doc.text(lines, x, y);
+    y += lines.length * 5 + 4;
+  };
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text(form.title, pageWidth / 2, y, { align: "center" });
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`All responses • Custom layout • Generated: ${new Date().toLocaleString()}`, pageWidth / 2, y, { align: "center" });
+  y += 14;
+
+  for (let responseIndex = 0; responseIndex < responses.length; responseIndex++) {
+    const response = responses[responseIndex];
+    ensureSpace(24);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`Response ${responseIndex + 1}`, left, y);
+    y += 7;
+    drawText(`Submitted: ${response.submittedAt ? new Date(response.submittedAt).toLocaleString() : ""}`, left, tableWidth);
+
+    let rendered = false;
+    if (form.confirmationStyle === "paragraph" && form.confirmationText) {
+      drawText(replaceReportVariables(form.confirmationText, response.data || {}), left, tableWidth);
+      rendered = true;
+    } else {
+      for (let gridIdx = 0; gridIdx < grids.length; gridIdx++) {
+        const grid = grids[gridIdx];
+        if (!grid) continue;
+        if (grid.textAbove) {
+          drawText(replaceReportVariables(grid.textAbove, response.data || {}), left, tableWidth);
+        }
+
+        const columnCount = Math.max(
+          grid.headers?.length || 0,
+          ...(grid.rows || []).map((row: any) => row.cells?.length || 0),
+          1,
+        );
+        const colWidth = tableWidth / columnCount;
+        if (grid.tableName) {
+          ensureSpace(11);
+          doc.setFillColor("#e2e8f0");
+          doc.rect(left, y, tableWidth, 10, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
+          doc.text(replaceReportVariables(grid.tableName, response.data || {}), pageWidth / 2, y + 7, { align: "center" });
+          y += 10;
+        }
+
+        if (grid.showHeaders !== false && grid.headers?.length > 0) {
+          ensureSpace(11);
+          doc.setFillColor(grid.headerColor || "#f1f5f9");
+          doc.rect(left, y, tableWidth, 10, "F");
+          doc.setTextColor(grid.headerTextColor || "#000000");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9);
+          grid.headers.forEach((header: string, index: number) => {
+            doc.text(String(header), left + index * colWidth + 2, y + 7);
+          });
+          y += 10;
+          doc.setTextColor("#000000");
+        }
+
+        for (const row of grid.rows || []) {
+          const cellValues = (row.cells || []).map((cell: any) =>
+            String(getCustomCellValue(cell, response.data || {}, gridIdx, resolvedLookupsByResponse[responseIndex])),
+          );
+          const heights = cellValues.map((value: string, index: number) =>
+            doc.splitTextToSize(value, (row.cells[index].colspan || 1) * colWidth - 4).length * 5 + 5,
+          );
+          const rowHeight = Math.max(10, ...heights);
+          ensureSpace(rowHeight);
+          let x = left;
+          row.cells.forEach((cell: any, cellIndex: number) => {
+            const width = (cell.colspan || 1) * colWidth;
+            if (cell.color) {
+              doc.setFillColor(cell.color);
+              doc.rect(x, y, width, rowHeight, "F");
+            }
+            doc.setDrawColor(200, 200, 200);
+            doc.rect(x, y, width, rowHeight, "D");
+            const style = cell.bold || row.isFooter
+              ? (cell.italic ? "bolditalic" : "bold")
+              : (cell.italic ? "italic" : "normal");
+            doc.setFont("helvetica", style);
+            doc.setFontSize(cell.fontSize || 10);
+            doc.setTextColor(cell.textColor || "#475569");
+            doc.text(
+              doc.splitTextToSize(cellValues[cellIndex], width - 4),
+              x + 2,
+              y + 7,
+            );
+            x += width;
+          });
+          doc.setTextColor("#000000");
+          y += rowHeight;
+        }
+
+        if (grid.textBelow) {
+          y += 4;
+          drawText(replaceReportVariables(grid.textBelow, response.data || {}), left, tableWidth);
+        }
+        rendered = rendered || Boolean(grid.tableName || grid.headers?.length || grid.rows?.length || grid.textAbove || grid.textBelow);
+        y += 6;
+      }
+    }
+
+    if (!rendered) {
+      for (const [key, value] of Object.entries(response.data || {})) {
+        const text = formatReportValue(value);
+        const lines = doc.splitTextToSize(text, tableWidth - 48);
+        const rowHeight = Math.max(8, lines.length * 5 + 3);
+        ensureSpace(rowHeight);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${key}:`, left, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(lines, left + 45, y);
+        y += rowHeight;
+      }
+    }
+    y += 8;
+  }
+
+  doc.save(`${form.title}-all-responses-custom-${new Date().toISOString().split("T")[0]}.pdf`);
 }
 
 export async function generateResponsesWhatsAppMessage(form: any, responses: any[]) {

@@ -16,10 +16,13 @@ import {
   generateExcel,
   generatePdf,
   generateResponsesDocx,
+  generateResponsesDocxCustom,
   generateResponsesExcel,
   generateResponsesPdf,
+  generateResponsesPdfCustom,
   generateResponsesWhatsAppMessage,
   generateWhatsAppShareMessage,
+  resolveFormGridLookups,
 } from "@/lib/form-context";
 
 export default function ResponsesView() {
@@ -27,7 +30,7 @@ export default function ResponsesView() {
   const [match, params] = useRoute("/forms/:id/responses");
   const { toast } = useToast();
   const { user, isSuspended } = useAuth();
-  const { getForm, updateResponse, deleteResponse } = useForms();
+  const { getForm, updateResponse, deleteResponse, resolveLookup } = useForms();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [responses, setResponses] = useState<any[]>([]);
@@ -157,6 +160,46 @@ export default function ResponsesView() {
     }
   };
 
+  const handleCustomAllResponsesOutput = async (format: "docx" | "pdf") => {
+    if (responses.length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no responses to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const resolvedLookupsByResponse: Record<number, Record<number, Record<string, string>>> = {};
+      for (let index = 0; index < responses.length; index++) {
+        resolvedLookupsByResponse[index] = await resolveFormGridLookups(
+          form,
+          responses[index].data || {},
+          resolveLookup,
+        );
+      }
+
+      if (format === "docx") {
+        await generateResponsesDocxCustom(form, responses, resolvedLookupsByResponse);
+      } else {
+        await generateResponsesPdfCustom(form, responses, resolvedLookupsByResponse);
+      }
+
+      toast({
+        title: "Custom Report Generated",
+        description: "The collective custom-layout report is ready.",
+      });
+    } catch (error) {
+      console.error("Error generating collective custom report:", error);
+      toast({
+        title: "Report Error",
+        description: "The collective custom-layout report could not be generated.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Response data now uses field labels as keys, so we just display them directly
 
   return (
@@ -190,22 +233,40 @@ export default function ResponsesView() {
                 </Button>
               )}
               {form.outputFormats?.includes("docx") && (
-                <Button
-                  onClick={() => handleAllResponsesOutput("docx")}
-                  variant="outline"
-                  data-testid="button-download-all-word"
-                >
-                  Word
-                </Button>
+                <>
+                  <Button
+                    onClick={() => handleAllResponsesOutput("docx")}
+                    variant="outline"
+                    data-testid="button-download-all-word"
+                  >
+                    Word
+                  </Button>
+                  <Button
+                    onClick={() => handleCustomAllResponsesOutput("docx")}
+                    variant="outline"
+                    data-testid="button-download-all-word-custom"
+                  >
+                    Word Custom
+                  </Button>
+                </>
               )}
               {form.outputFormats?.includes("pdf") && (
-                <Button
-                  onClick={() => handleAllResponsesOutput("pdf")}
-                  variant="outline"
-                  data-testid="button-download-all-pdf"
-                >
-                  PDF
-                </Button>
+                <>
+                  <Button
+                    onClick={() => handleAllResponsesOutput("pdf")}
+                    variant="outline"
+                    data-testid="button-download-all-pdf"
+                  >
+                    PDF
+                  </Button>
+                  <Button
+                    onClick={() => handleCustomAllResponsesOutput("pdf")}
+                    variant="outline"
+                    data-testid="button-download-all-pdf-custom"
+                  >
+                    PDF Custom
+                  </Button>
+                </>
               )}
               {form.outputFormats?.includes("whatsapp") && (
                 <Button
