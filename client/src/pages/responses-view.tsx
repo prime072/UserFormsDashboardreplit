@@ -11,16 +11,12 @@ import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Share2, 
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
-  generateDocx,
-  generateExcel,
-  generatePdf,
   generateResponsesDocx,
   generateResponsesDocxCustom,
   generateResponsesExcel,
   generateResponsesPdf,
   generateResponsesPdfCustom,
   generateResponsesWhatsAppMessage,
-  generateWhatsAppShareMessage,
   resolveFormGridLookups,
 } from "@/lib/form-context";
 
@@ -114,31 +110,6 @@ export default function ResponsesView() {
           variant: "destructive",
         });
       }
-    }
-  };
-
-  const handleReportOutput = async (
-    format: "excel" | "docx" | "pdf" | "whatsapp",
-    response: any,
-  ) => {
-    try {
-      if (format === "excel") {
-        await generateExcel(form.title, response.data);
-      } else if (format === "docx") {
-        await generateDocx(form, response.data);
-      } else if (format === "pdf") {
-        await generatePdf(form, response.data);
-      } else {
-        const message = await generateWhatsAppShareMessage(form, response.data);
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
-      }
-    } catch (error) {
-      console.error("Error generating response report:", error);
-      toast({
-        title: "Report Error",
-        description: "The report could not be generated.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -385,46 +356,6 @@ export default function ResponsesView() {
                               <Eye className="w-3 h-3" /> Report
                             </Button>
                           </Link>
-                          {form.outputFormats?.includes("excel") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleReportOutput("excel", response)}
-                              data-testid={`button-excel-${response.id}`}
-                            >
-                              Excel
-                            </Button>
-                          )}
-                          {form.outputFormats?.includes("docx") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleReportOutput("docx", response)}
-                              data-testid={`button-word-${response.id}`}
-                            >
-                              Word
-                            </Button>
-                          )}
-                          {form.outputFormats?.includes("pdf") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleReportOutput("pdf", response)}
-                              data-testid={`button-pdf-${response.id}`}
-                            >
-                              PDF
-                            </Button>
-                          )}
-                          {form.outputFormats?.includes("whatsapp") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleReportOutput("whatsapp", response)}
-                              data-testid={`button-whatsapp-${response.id}`}
-                            >
-                              <Share2 className="w-3 h-3" />
-                            </Button>
-                          )}
                           <Button
                               size="sm"
                               variant="outline"
