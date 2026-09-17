@@ -19,6 +19,7 @@ import {
   AlignmentType,
   TextRun,
   ImageRun,
+  PageBreak,
 } from "docx";
 import jsPDF from "jspdf";
 import { useAuth } from "./auth-context";
@@ -692,6 +693,30 @@ export function useForms() {
   return context;
 }
 
+const formatReportValue = (value: any): string => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item: any) =>
+        typeof item === "object" && item !== null
+          ? Object.entries(item).map(([key, nestedValue]) => `${key}: ${nestedValue}`).join(", ")
+          : String(item),
+      )
+      .join(" | ");
+  }
+  return String(value ?? "");
+};
+
+const getCollectiveReportRows = (responses: any[]) =>
+  responses.map((response, index) => ({
+    "Response": index + 1,
+    "Submitted At": response.submittedAt
+      ? new Date(response.submittedAt).toLocaleString()
+      : "",
+    ...Object.fromEntries(
+      Object.entries(response.data || {}).map(([key, value]) => [key, formatReportValue(value)]),
+    ),
+  }));
+
 export async function generateExcel(formTitle: string, responseData: any) {
   // Flatten response data for Excel, handling repeater fields
   const flattenedData: Record<string, any> = {};
@@ -720,6 +745,151 @@ export async function generateExcel(formTitle: string, responseData: any) {
   XLSX.utils.book_append_sheet(workbook, worksheet, "Response");
   const filename = `${formTitle}-response-${new Date().toISOString().split("T")[0]}.xlsx`;
   XLSX.writeFile(workbook, filename);
+}
+
+export async function generateResponsesExcel(formTitle: string, responses: any[]) {
+  const worksheet = XLSX.utils.json_to_sheet(getCollectiveReportRows(responses));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "All Responses");
+  XLSX.writeFile(
+    workbook,
+    `${formTitle}-all-responses-${new Date().toISOString().split("T")[0]}.xlsx`,
+  );
+}
+
+export async function generateResponsesDocx(form: any, responses: any[]) {
+  const children: any[] = [
+    new Paragraph({
+      text: form.title,
+      heading: "Heading1",
+      alignment: AlignmentType.CENTER,
+    }),
+    new Paragraph({
+      text: `All responses • Generated: ${new Date().toLocaleString()}`,
+      alignment: AlignmentType.CENTER,
+    }),
+    new Paragraph(""),
+  ];
+
+  responses.forEach((response, index) => {
+    const responseRows = [
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: "Submitted At", bold: true })] })],
+          }),
+          new TableCell({
+            children: [new Paragraph({ text: response.submittedAt ? new Date(response.submittedAt).toLocaleString() : "" })],
+          }),
+        ],
+      }),
+      ...Object.entries(response.data || {}).map(([key, value]) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({ children: [new TextRun({ text: key, bold: true })] })],
+            }),
+            new TableCell({
+              children: [new Paragraph({ text: formatReportValue(value) })],
+            }),
+          ],
+        }),
+      ),
+    ];
+
+    children.push(
+      new Paragraph({ text: `Response ${index + 1}`, heading: "Heading2" }),
+      new Table({
+        rows: responseRows,
+        width: { size: 100, type: WidthType.PERCENTAGE },
+      }),
+    );
+
+    if (index < responses.length - 1) {
+      children.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+  });
+
+  const doc = new Document({
+    sections: [{ children }],
+  });
+  const buffer = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(buffer);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${form.title}-all-responses-${new Date().toISOString().split("T")[0]}.docx`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function generateResponsesPdf(form: any, responses: any[]) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const left = 20;
+  const valueLeft = 65;
+  const contentWidth = pageWidth - left - 20;
+  let y = 20;
+
+  const ensureSpace = (requiredHeight: number) => {
+    if (y + requiredHeight > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.text(form.title, pageWidth / 2, y, { align: "center" });
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`All responses • Generated: ${new Date().toLocaleString()}`, pageWidth / 2, y, { align: "center" });
+  y += 14;
+
+  responses.forEach((response, index) => {
+    ensureSpace(20);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`Response ${index + 1}`, left, y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    const rows = [
+      ["Submitted At", response.submittedAt ? new Date(response.submittedAt).toLocaleString() : ""],
+      ...Object.entries(response.data || {}).map(([key, value]) => [key, formatReportValue(value)]),
+    ];
+
+    rows.forEach(([key, value]) => {
+      const lines = doc.splitTextToSize(String(value), contentWidth - (valueLeft - left));
+      const rowHeight = Math.max(8, lines.length * 5 + 3);
+      ensureSpace(rowHeight);
+      doc.setFont("helvetica", "bold");
+      doc.text(String(key), left, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(lines, valueLeft, y);
+      y += rowHeight;
+    });
+
+    y += 8;
+  });
+
+  doc.save(`${form.title}-all-responses-${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+export async function generateResponsesWhatsAppMessage(form: any, responses: any[]) {
+  const sections = responses.map((response, index) => {
+    const values = Object.entries(response.data || {})
+      .map(([key, value]) => `${key}: ${formatReportValue(value)}`)
+      .join("\n");
+    const submittedAt = response.submittedAt
+      ? `Submitted At: ${new Date(response.submittedAt).toLocaleString()}\n`
+      : "";
+    return `Response ${index + 1}\n${submittedAt}${values}`;
+  });
+
+  return `Form: ${form.title}\n\n${sections.join("\n\n--------------------\n\n")}`;
 }
 
 export async function generateDocx(

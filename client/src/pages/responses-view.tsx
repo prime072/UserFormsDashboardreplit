@@ -10,12 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Plus, Minus, Share2, Eye } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from 'xlsx';
 import { addDaysToDate, calculateHmr } from "@shared/schema";
 import {
   generateDocx,
   generateExcel,
   generatePdf,
+  generateResponsesDocx,
+  generateResponsesExcel,
+  generateResponsesPdf,
+  generateResponsesWhatsAppMessage,
   generateWhatsAppShareMessage,
 } from "@/lib/form-context";
 
@@ -117,34 +120,41 @@ export default function ResponsesView() {
     }
   };
 
-  const handleDownloadXLSX = () => {
+  const handleAllResponsesOutput = async (
+    format: "excel" | "docx" | "pdf" | "whatsapp",
+  ) => {
     if (responses.length === 0) {
       toast({
         title: "No Data",
-        description: "No responses to download.",
+        description: "There are no responses to export.",
         variant: "destructive"
       });
       return;
     }
 
-    // Create worksheet data
-    const wsData = responses.map(response => ({
-      ...response.data,
-      'Submitted At': response.submittedAt
-    }));
-
-    // Create workbook and worksheet
-    const ws = XLSX.utils.json_to_sheet(wsData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Responses");
-
-    // Download file
-    XLSX.writeFile(wb, `${form?.title || 'responses'}-responses.xlsx`);
-    
-    toast({
-      title: "Downloaded",
-      description: "Responses exported as XLSX file.",
-    });
+    try {
+      if (format === "excel") {
+        await generateResponsesExcel(form.title, responses);
+      } else if (format === "docx") {
+        await generateResponsesDocx(form, responses);
+      } else if (format === "pdf") {
+        await generateResponsesPdf(form, responses);
+      } else {
+        const message = await generateResponsesWhatsAppMessage(form, responses);
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+      }
+      toast({
+        title: "Report Generated",
+        description: "The collective report is ready.",
+      });
+    } catch (error) {
+      console.error("Error generating collective report:", error);
+      toast({
+        title: "Report Error",
+        description: "The collective report could not be generated.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Response data now uses field labels as keys, so we just display them directly
@@ -165,15 +175,49 @@ export default function ResponsesView() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button 
-              onClick={handleDownloadXLSX}
-              variant="outline"
-              className="gap-2"
-              data-testid="button-download-xlsx"
-            >
-              <Download className="w-4 h-4" />
-              Download XLSX
-            </Button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <span className="self-center text-xs font-semibold uppercase tracking-wide text-slate-500">
+                All responses
+              </span>
+              {form.outputFormats?.includes("excel") && (
+                <Button
+                  onClick={() => handleAllResponsesOutput("excel")}
+                  variant="outline"
+                  className="gap-2"
+                  data-testid="button-download-all-excel"
+                >
+                  <Download className="w-4 h-4" /> Excel
+                </Button>
+              )}
+              {form.outputFormats?.includes("docx") && (
+                <Button
+                  onClick={() => handleAllResponsesOutput("docx")}
+                  variant="outline"
+                  data-testid="button-download-all-word"
+                >
+                  Word
+                </Button>
+              )}
+              {form.outputFormats?.includes("pdf") && (
+                <Button
+                  onClick={() => handleAllResponsesOutput("pdf")}
+                  variant="outline"
+                  data-testid="button-download-all-pdf"
+                >
+                  PDF
+                </Button>
+              )}
+              {form.outputFormats?.includes("whatsapp") && (
+                <Button
+                  onClick={() => handleAllResponsesOutput("whatsapp")}
+                  variant="outline"
+                  className="gap-2"
+                  data-testid="button-share-all-whatsapp"
+                >
+                  <Share2 className="w-4 h-4" /> WhatsApp
+                </Button>
+              )}
+            </div>
             {!isSuspended && (
               <Link href={`/forms/${formId}/analytics`}>
                 <Button className="gap-2">
