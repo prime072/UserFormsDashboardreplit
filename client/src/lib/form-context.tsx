@@ -247,8 +247,8 @@ type FormContextType = {
   getFormResponses: (formId: string) => FormResponse[];
   fetchFormResponses: (formId: string) => Promise<void>;
   fetchUserDatabases: () => Promise<UserDatabase[]>;
-  updateResponse: (responseId: string, data: Record<string, any>) => void;
-  deleteResponse: (responseId: string) => void;
+  updateResponse: (responseId: string, data: Record<string, any>) => Promise<void>;
+  deleteResponse: (responseId: string) => Promise<void>;
   resolveLookup: (
     lookupConfig: {
       formId: string;
@@ -499,26 +499,61 @@ export function FormProvider({ children }: { children: ReactNode }) {
     return [];
   };
 
-  const updateResponse = (responseId: string, data: Record<string, any>) => {
-    const updatedResponses = responses.map((r) =>
-      r.id === responseId ? { ...r, data } : r,
+  const updateResponse = async (responseId: string, data: Record<string, any>) => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (user?.id) headers["x-user-id"] = user.id;
+
+    const response = await fetch(`/api/responses/${responseId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ data }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update response");
+    }
+
+    const updatedResponse = await response.json();
+    if (!updatedResponse) {
+      throw new Error("Response was not found");
+    }
+
+    setResponses((currentResponses) =>
+      currentResponses.map((item) =>
+        item.id === responseId ? { ...item, ...updatedResponse, data } : item,
+      ),
     );
-    setResponses(updatedResponses);
   };
 
-  const deleteResponse = (responseId: string) => {
-    const response = responses.find((r) => r.id === responseId);
-    if (!response) return;
+  const deleteResponse = async (responseId: string) => {
+    const responseToDelete = responses.find((item) => item.id === responseId);
+    const headers: Record<string, string> = {};
+    if (user?.id) headers["x-user-id"] = user.id;
 
-    const updatedResponses = responses.filter((r) => r.id !== responseId);
-    setResponses(updatedResponses);
+    const response = await fetch(`/api/responses/${responseId}`, {
+      method: "DELETE",
+      headers,
+    });
 
-    const updatedForms = forms.map((f) =>
-      f.id === response.formId
-        ? { ...f, responses: Math.max(0, f.responses - 1) }
-        : f,
+    if (!response.ok) {
+      throw new Error("Failed to delete response");
+    }
+
+    setResponses((currentResponses) =>
+      currentResponses.filter((item) => item.id !== responseId),
     );
-    setForms(updatedForms);
+
+    if (responseToDelete) {
+      setForms((currentForms) =>
+        currentForms.map((form) =>
+          form.id === responseToDelete.formId
+            ? { ...form, responses: Math.max(0, form.responses - 1) }
+            : form,
+        ),
+      );
+    }
   };
 
   const resolveLookup = async (

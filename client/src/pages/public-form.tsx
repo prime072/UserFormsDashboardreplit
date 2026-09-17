@@ -121,12 +121,7 @@ export default function PublicForm() {
     setIsSubmitting(true);
     try {
       if (editId) {
-        await fetch(`/api/responses/${editId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: formData }),
-        });
-        updateResponse(editId, formData);
+        await updateResponse(editId, formData);
         toast({ title: "Updated", description: "Your response has been updated." });
         setLocation(`/s/${form.id}/confirmation/${editId}`);
       } else {

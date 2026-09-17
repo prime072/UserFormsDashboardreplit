@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Plus, Minus, Share2, Eye } from "lucide-react";
+import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Share2, Eye } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { addDaysToDate, calculateHmr } from "@shared/schema";
 import {
   generateDocx,
   generateExcel,
@@ -78,23 +77,43 @@ export default function ResponsesView() {
     setEditData({ ...data });
   };
 
-  const handleSaveEdit = (responseId: string) => {
-    updateResponse(responseId, editData);
-    setEditingId(null);
-    toast({
-      title: "Response Updated",
-      description: "The response has been updated successfully.",
-    });
+  const handleSaveEdit = async (responseId: string) => {
+    try {
+      await updateResponse(responseId, editData);
+      await loadResponses();
+      setEditingId(null);
+      toast({
+        title: "Response Updated",
+        description: "The response has been saved to the database.",
+      });
+    } catch (error) {
+      console.error("Error updating response:", error);
+      toast({
+        title: "Update Failed",
+        description: "The response could not be saved.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteResponse = (responseId: string) => {
+  const handleDeleteResponse = async (responseId: string) => {
     if (confirm("Are you sure you want to delete this response?")) {
-      deleteResponse(responseId);
-      toast({
-        title: "Response Deleted",
-        description: "The response has been removed.",
-        variant: "destructive"
-      });
+      try {
+        await deleteResponse(responseId);
+        await loadResponses();
+        toast({
+          title: "Response Deleted",
+          description: "The response has been removed from the database.",
+          variant: "destructive"
+        });
+      } catch (error) {
+        console.error("Error deleting response:", error);
+        toast({
+          title: "Delete Failed",
+          description: "The response could not be deleted.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -331,34 +350,8 @@ export default function ResponsesView() {
                             data-testid={`input-edit-${key}`}
                           />
                         ) : (
-                          <div className="space-y-1">
+                          <div>
                             <span className="text-sm">{String(value || "-")}</span>
-                            {key.toLowerCase().includes('date') && value && (
-                              <div className="flex gap-1 mt-1">
-                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                  const newData = { ...response.data, [key]: addDaysToDate(String(value), 1) };
-                                  updateResponse(response.id, newData);
-                                }} title="Add 1 day"><Plus className="h-3 w-3" /></Button>
-                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                  const newData = { ...response.data, [key]: addDaysToDate(String(value), -1) };
-                                  updateResponse(response.id, newData);
-                                }} title="Subtract 1 day"><Minus className="h-3 w-3" /></Button>
-                                <span className="text-[10px] text-muted-foreground self-center ml-1">Days</span>
-                              </div>
-                            )}
-                            {/hmr|reading/i.test(key) && value && typeof value === 'string' && value.includes(':') && (
-                              <div className="flex gap-1 mt-1">
-                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                  const newData = { ...response.data, [key]: calculateHmr(String(value), 60) };
-                                  updateResponse(response.id, newData);
-                                }} title="Add 1 hour"><Plus className="h-3 w-3" /></Button>
-                                <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => {
-                                  const newData = { ...response.data, [key]: calculateHmr(String(value), -60) };
-                                  updateResponse(response.id, newData);
-                                }} title="Subtract 1 hour"><Minus className="h-3 w-3" /></Button>
-                                <span className="text-[10px] text-muted-foreground self-center ml-1">Hrs</span>
-                              </div>
-                            )}
                           </div>
                         )}
                       </TableCell>
