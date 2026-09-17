@@ -7,11 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Plus, Minus } from "lucide-react";
+import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Plus, Minus, Share2, Eye } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 import { addDaysToDate, calculateHmr } from "@shared/schema";
+import {
+  generateDocx,
+  generateExcel,
+  generatePdf,
+  generateWhatsAppShareMessage,
+} from "@/lib/form-context";
 
 export default function ResponsesView() {
   const [, setLocation] = useLocation();
@@ -82,6 +88,31 @@ export default function ResponsesView() {
         title: "Response Deleted",
         description: "The response has been removed.",
         variant: "destructive"
+      });
+    }
+  };
+
+  const handleReportOutput = async (
+    format: "excel" | "docx" | "pdf" | "whatsapp",
+    response: any,
+  ) => {
+    try {
+      if (format === "excel") {
+        await generateExcel(form.title, response.data);
+      } else if (format === "docx") {
+        await generateDocx(form, response.data);
+      } else if (format === "pdf") {
+        await generatePdf(form, response.data);
+      } else {
+        const message = await generateWhatsAppShareMessage(form, response.data);
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+      }
+    } catch (error) {
+      console.error("Error generating response report:", error);
+      toast({
+        title: "Report Error",
+        description: "The report could not be generated.",
+        variant: "destructive",
       });
     }
   };
@@ -250,24 +281,69 @@ export default function ResponsesView() {
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          <Link href={`/s/${form.id}/confirmation/${response.id}`}>
+                            <Button size="sm" variant="outline" className="gap-1" data-testid={`button-view-report-${response.id}`}>
+                              <Eye className="w-3 h-3" /> Report
+                            </Button>
+                          </Link>
+                          {form.outputFormats?.includes("excel") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReportOutput("excel", response)}
+                              data-testid={`button-excel-${response.id}`}
+                            >
+                              Excel
+                            </Button>
+                          )}
+                          {form.outputFormats?.includes("docx") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReportOutput("docx", response)}
+                              data-testid={`button-word-${response.id}`}
+                            >
+                              Word
+                            </Button>
+                          )}
+                          {form.outputFormats?.includes("pdf") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReportOutput("pdf", response)}
+                              data-testid={`button-pdf-${response.id}`}
+                            >
+                              PDF
+                            </Button>
+                          )}
+                          {form.outputFormats?.includes("whatsapp") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReportOutput("whatsapp", response)}
+                              data-testid={`button-whatsapp-${response.id}`}
+                            >
+                              <Share2 className="w-3 h-3" />
+                            </Button>
+                          )}
                           <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleEdit(response.id, response.data)}
-                            data-testid={`button-edit-${response.id}`}
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-500 hover:text-red-600"
-                            onClick={() => handleDeleteResponse(response.id)}
-                            data-testid={`button-delete-${response.id}`}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(response.id, response.data)}
+                              data-testid={`button-edit-${response.id}`}
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500 hover:text-red-600"
+                              onClick={() => handleDeleteResponse(response.id)}
+                              data-testid={`button-delete-${response.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
                         </div>
                       )}
                     </TableCell>
