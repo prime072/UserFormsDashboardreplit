@@ -117,6 +117,32 @@ export default function FormBuilder() {
     }
   };
 
+  const hasGridConfigData = (config: GridConfig) =>
+    config.headers.length > 0 ||
+    config.rows.length > 0 ||
+    Boolean(
+      config.tableName ||
+      config.textAbove ||
+      config.textBelow ||
+      config.headerColor ||
+      config.headerTextColor ||
+      config.showHeaders,
+    );
+
+  const addSection = () => {
+    setGridConfigs((currentConfigs) => {
+      if (currentConfigs.length > 0) {
+        return [...currentConfigs, { headers: [], rows: [] }];
+      }
+
+      // Older forms store their first section in `gridConfig`. Move it into
+      // the multi-section list before adding the new section so existing
+      // table rows and text settings are not hidden or overwritten.
+      const existingSections = hasGridConfigData(gridConfig) ? [gridConfig] : [];
+      return [...existingSections, { headers: [], rows: [] }];
+    });
+  };
+
   const handleSave = async () => {
     // Check for duplicate field labels
     const labels = fields.map(f => f.label.trim().toLowerCase());
@@ -252,7 +278,7 @@ export default function FormBuilder() {
               <h3 className="font-semibold">Output Sections</h3>
               <Button 
                 size="sm" 
-                onClick={() => setGridConfigs([...gridConfigs, { headers: [], rows: [] }])}
+                onClick={addSection}
                 className="gap-2"
               >
                 <Plus className="w-4 h-4" /> Add Section
