@@ -6,17 +6,30 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Share2, Eye } from "lucide-react";
+import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Share2, Eye, ChevronUp, ChevronDown } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
+  CollectiveReportType2Config,
   generateResponsesDocx,
   generateResponsesDocxCustom,
   generateResponsesExcel,
   generateResponsesPdf,
   generateResponsesPdfCustom,
   generateResponsesWhatsAppMessage,
+  generateResponsesDocxType2,
+  generateResponsesPdfType2,
   resolveFormGridLookups,
 } from "@/lib/form-context";
 
@@ -29,11 +42,17 @@ export default function ResponsesView() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [responses, setResponses] = useState<any[]>([]);
+  const [type2Open, setType2Open] = useState(false);
+  const [type2Format, setType2Format] = useState<"docx" | "pdf" | null>(null);
+  const [type2Config, setType2Config] = useState<CollectiveReportType2Config | null>(null);
 
   const formId = params?.id;
   const form = formId ? getForm(formId) : undefined;
   const [search, setSearch] = useState("");
   const [filteredResponses, setFilteredResponses] = useState<any[]>([]);
+  const availableFields = Array.from(
+    new Set(responses.flatMap((response) => Object.keys(response.data || {}))),
+  );
 
   const loadResponses = async () => {
     if (!formId) return;
@@ -190,6 +209,81 @@ export default function ResponsesView() {
     }
   };
 
+  const openType2Designer = (format: "docx" | "pdf") => {
+    if (responses.length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no responses to include in the report.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fields = availableFields;
+    setType2Format(format);
+    setType2Config({
+      title: `${form.title} Report`,
+      headerText: "",
+      footerText: "",
+      selectedFields: fields,
+      fieldOrder: fields,
+      layout: "separate_pages",
+      headerColor: "#f1f5f9",
+      headerTextColor: "#334155",
+      accentColor: "#4f46e5",
+      fontSize: 10,
+    });
+    setType2Open(true);
+  };
+
+  const updateType2Config = (updates: Partial<CollectiveReportType2Config>) => {
+    setType2Config((current) => current ? { ...current, ...updates } : current);
+  };
+
+  const toggleType2Field = (field: string) => {
+    setType2Config((current) => {
+      if (!current) return current;
+      const selectedFields = current.selectedFields.includes(field)
+        ? current.selectedFields.filter((item) => item !== field)
+        : [...current.selectedFields, field];
+      return { ...current, selectedFields };
+    });
+  };
+
+  const moveType2Field = (index: number, direction: "up" | "down") => {
+    setType2Config((current) => {
+      if (!current) return current;
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= current.fieldOrder.length) return current;
+      const fieldOrder = [...current.fieldOrder];
+      [fieldOrder[index], fieldOrder[targetIndex]] = [fieldOrder[targetIndex], fieldOrder[index]];
+      return { ...current, fieldOrder };
+    });
+  };
+
+  const generateType2Report = async () => {
+    if (!type2Config || !type2Format) return;
+    try {
+      if (type2Format === "docx") {
+        await generateResponsesDocxType2(form, responses, type2Config);
+      } else {
+        await generateResponsesPdfType2(form, responses, type2Config);
+      }
+      setType2Open(false);
+      toast({
+        title: "Type 2 Report Generated",
+        description: `The customized collective ${type2Format === "docx" ? "Word" : "PDF"} report is ready.`,
+      });
+    } catch (error) {
+      console.error("Error generating Type 2 report:", error);
+      toast({
+        title: "Report Error",
+        description: "The customized report could not be generated.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Response data now uses field labels as keys, so we just display them directly
 
   return (
@@ -238,6 +332,13 @@ export default function ResponsesView() {
                   >
                     Word Custom
                   </Button>
+                  <Button
+                    onClick={() => openType2Designer("docx")}
+                    variant="outline"
+                    data-testid="button-download-all-word-type-2"
+                  >
+                    Word Type 2
+                  </Button>
                 </>
               )}
               {form.outputFormats?.includes("pdf") && (
@@ -255,6 +356,13 @@ export default function ResponsesView() {
                     data-testid="button-download-all-pdf-custom"
                   >
                     PDF Custom
+                  </Button>
+                  <Button
+                    onClick={() => openType2Designer("pdf")}
+                    variant="outline"
+                    data-testid="button-download-all-pdf-type-2"
+                  >
+                    PDF Type 2
                   </Button>
                 </>
               )}
@@ -279,6 +387,151 @@ export default function ResponsesView() {
             )}
           </div>
         </div>
+
+        <Dialog open={type2Open} onOpenChange={setType2Open}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Customize Type 2 {type2Format === "docx" ? "Word" : "PDF"} Report</DialogTitle>
+              <DialogDescription>
+                Create a separate collective report without changing the existing report formats.
+              </DialogDescription>
+            </DialogHeader>
+
+            {type2Config && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Report title</label>
+                    <Input
+                      value={type2Config.title}
+                      onChange={(event) => updateType2Config({ title: event.target.value })}
+                      placeholder="Report title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Response layout</label>
+                    <select
+                      value={type2Config.layout}
+                      onChange={(event) => updateType2Config({ layout: event.target.value as CollectiveReportType2Config["layout"] })}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="separate_pages">One response per page</option>
+                      <option value="continuous">Continuous responses</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Header text</label>
+                    <Textarea
+                      value={type2Config.headerText}
+                      onChange={(event) => updateType2Config({ headerText: event.target.value })}
+                      placeholder="Optional text below the title"
+                      className="min-h-20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Footer text</label>
+                    <Textarea
+                      value={type2Config.footerText}
+                      onChange={(event) => updateType2Config({ footerText: event.target.value })}
+                      placeholder="Optional footer or notes"
+                      className="min-h-20"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <label className="space-y-2 text-sm font-medium">
+                    <span>Label background</span>
+                    <Input
+                      type="color"
+                      value={type2Config.headerColor}
+                      onChange={(event) => updateType2Config({ headerColor: event.target.value })}
+                      className="h-10 w-full p-1"
+                    />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium">
+                    <span>Value text</span>
+                    <Input
+                      type="color"
+                      value={type2Config.headerTextColor}
+                      onChange={(event) => updateType2Config({ headerTextColor: event.target.value })}
+                      className="h-10 w-full p-1"
+                    />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium">
+                    <span>Accent color</span>
+                    <Input
+                      type="color"
+                      value={type2Config.accentColor}
+                      onChange={(event) => updateType2Config({ accentColor: event.target.value })}
+                      className="h-10 w-full p-1"
+                    />
+                  </label>
+                  <label className="space-y-2 text-sm font-medium">
+                    <span>Font size</span>
+                    <Input
+                      type="number"
+                      min={8}
+                      max={18}
+                      value={type2Config.fontSize}
+                      onChange={(event) => updateType2Config({ fontSize: Math.min(18, Math.max(8, Number(event.target.value) || 10)) })}
+                    />
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">Response fields</h3>
+                    <p className="text-xs text-slate-500">Select fields and use the arrows to arrange their order.</p>
+                  </div>
+                  <div className="rounded-md border divide-y">
+                    {type2Config.fieldOrder.map((field, index) => (
+                      <div key={field} className="flex items-center gap-3 p-2">
+                        <Checkbox
+                          checked={type2Config.selectedFields.includes(field)}
+                          onCheckedChange={() => toggleType2Field(field)}
+                        />
+                        <span className={`flex-1 text-sm ${type2Config.selectedFields.includes(field) ? "text-slate-900" : "text-slate-400"}`}>
+                          {field}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          disabled={index === 0}
+                          onClick={() => moveType2Field(index, "up")}
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          disabled={index === type2Config.fieldOrder.length - 1}
+                          onClick={() => moveType2Field(index, "down")}
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setType2Open(false)}>Cancel</Button>
+              <Button onClick={generateType2Report} disabled={!type2Config?.selectedFields.length}>
+                Generate {type2Format === "docx" ? "Word" : "PDF"} Type 2
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {isSuspended && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">

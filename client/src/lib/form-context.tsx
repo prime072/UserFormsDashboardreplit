@@ -895,6 +895,19 @@ const getCollectiveReportRows = (responses: any[]) =>
     ),
   }));
 
+export interface CollectiveReportType2Config {
+  title: string;
+  headerText: string;
+  footerText: string;
+  selectedFields: string[];
+  fieldOrder: string[];
+  layout: "separate_pages" | "continuous";
+  headerColor: string;
+  headerTextColor: string;
+  accentColor: string;
+  fontSize: number;
+}
+
 export async function generateExcel(formTitle: string, responseData: any) {
   // Flatten response data for Excel, handling repeater fields
   const flattenedData: Record<string, any> = {};
@@ -1442,6 +1455,215 @@ export async function generateResponsesPdfCustom(
   }
 
   doc.save(`${form.title}-all-responses-custom-${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+const getType2Fields = (config: CollectiveReportType2Config) =>
+  config.fieldOrder.filter((field) => config.selectedFields.includes(field));
+
+const getType2Title = (form: any, config: CollectiveReportType2Config) =>
+  config.title.trim() || `${form.title} Report`;
+
+export async function generateResponsesDocxType2(
+  form: any,
+  responses: any[],
+  config: CollectiveReportType2Config,
+) {
+  const fields = getType2Fields(config);
+  const body: any[] = [
+    new Paragraph({
+      text: getType2Title(form, config),
+      heading: "Heading1",
+      alignment: AlignmentType.CENTER,
+    }),
+  ];
+
+  if (config.headerText.trim()) {
+    body.push(new Paragraph({
+      text: config.headerText,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
+    }));
+  }
+
+  responses.forEach((response, responseIndex) => {
+    const responseRows = [
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: "Submitted At", bold: true })] })],
+            shading: { fill: config.headerColor.replace("#", "") },
+          }),
+          new TableCell({
+            children: [new Paragraph({
+              children: [new TextRun({ text: response.submittedAt ? new Date(response.submittedAt).toLocaleString() : "" })],
+            })],
+          }),
+        ],
+      }),
+      ...fields.map((field) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph({
+                children: [new TextRun({
+                  text: field,
+                  bold: true,
+                  color: config.accentColor.replace("#", ""),
+                })],
+              })],
+              shading: { fill: config.headerColor.replace("#", "") },
+            }),
+            new TableCell({
+              children: [new Paragraph({
+                children: [new TextRun({
+                  text: formatReportValue(response.data?.[field]),
+                  size: config.fontSize * 2,
+                })],
+              })],
+            }),
+          ],
+        }),
+      ),
+    ];
+
+    body.push(
+      new Paragraph({
+        text: `Response ${responseIndex + 1}`,
+        heading: "Heading2",
+        spacing: { before: responseIndex === 0 ? 200 : 400 },
+      }),
+      new Table({
+        rows: responseRows,
+        width: { size: 100, type: WidthType.PERCENTAGE },
+      }),
+    );
+
+    if (config.layout === "separate_pages" && responseIndex < responses.length - 1) {
+      body.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+  });
+
+  if (config.footerText.trim()) {
+    body.push(new Paragraph({
+      text: config.footerText,
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 300 },
+    }));
+  }
+
+  const doc = new Document({ sections: [{ children: body }] });
+  const buffer = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(buffer);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${getType2Title(form, config)}-type-2-${new Date().toISOString().split("T")[0]}.docx`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function generateResponsesPdfType2(
+  form: any,
+  responses: any[],
+  config: CollectiveReportType2Config,
+) {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const left = 20;
+  const contentWidth = pageWidth - 40;
+  const valueLeft = left + contentWidth * 0.38;
+  let y = 20;
+  const fields = getType2Fields(config);
+
+  const ensureSpace = (height: number) => {
+    if (y + height > pageHeight - 22) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+  const drawWrapped = (text: string, x: number, width: number, style = "normal") => {
+    doc.setFont("helvetica", style);
+    doc.setFontSize(config.fontSize);
+    const lines = doc.splitTextToSize(text, width);
+    ensureSpace(lines.length * 5 + 5);
+    doc.text(lines, x, y);
+    y += lines.length * 5 + 5;
+  };
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(config.accentColor);
+  doc.text(getType2Title(form, config), pageWidth / 2, y, { align: "center" });
+  y += 10;
+  if (config.headerText.trim()) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(config.fontSize);
+    doc.setTextColor("#475569");
+    doc.text(doc.splitTextToSize(config.headerText, contentWidth), pageWidth / 2, y, { align: "center" });
+    y += 10;
+  }
+
+  responses.forEach((response, responseIndex) => {
+    if (config.layout === "separate_pages" && responseIndex > 0) {
+      doc.addPage();
+      y = 20;
+    }
+
+    ensureSpace(18);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(config.accentColor);
+    doc.text(`Response ${responseIndex + 1}`, left, y);
+    y += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(config.fontSize);
+    doc.setTextColor("#475569");
+    doc.text(
+      `Submitted: ${response.submittedAt ? new Date(response.submittedAt).toLocaleString() : ""}`,
+      left,
+      y,
+    );
+    y += 8;
+
+    const rows = fields.map((field) => ({
+      field,
+      value: formatReportValue(response.data?.[field]),
+    }));
+
+    rows.forEach(({ field, value }) => {
+      const valueLines = doc.splitTextToSize(value, pageWidth - valueLeft - 22);
+      const rowHeight = Math.max(9, valueLines.length * 5 + 4);
+      ensureSpace(rowHeight);
+      doc.setFillColor(config.headerColor);
+      doc.rect(left, y - 5, contentWidth, rowHeight, "F");
+      doc.setDrawColor(210, 214, 220);
+      doc.rect(left, y - 5, contentWidth, rowHeight, "D");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(config.fontSize);
+      doc.setTextColor(config.accentColor);
+      doc.text(field, left + 3, y + 1);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(config.headerTextColor);
+      doc.text(valueLines, valueLeft, y + 1);
+      y += rowHeight;
+    });
+
+    if (config.layout === "continuous") y += 8;
+  });
+
+  if (config.footerText.trim()) {
+    const pages = doc.getNumberOfPages();
+    for (let page = 1; page <= pages; page++) {
+      doc.setPage(page);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(Math.max(8, config.fontSize - 2));
+      doc.setTextColor("#64748b");
+      doc.text(config.footerText, pageWidth / 2, pageHeight - 10, { align: "center" });
+    }
+  }
+
+  doc.save(`${getType2Title(form, config)}-type-2-${new Date().toISOString().split("T")[0]}.pdf`);
 }
 
 export async function generateResponsesWhatsAppMessage(form: any, responses: any[]) {
