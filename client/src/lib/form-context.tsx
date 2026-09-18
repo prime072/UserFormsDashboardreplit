@@ -199,6 +199,7 @@ export interface Form {
   gridConfigs?: GridConfig[];
   whatsappFormat?: string;
   allowEditing?: boolean;
+  tableConfig?: any;
 }
 
 export interface FormResponse {
@@ -237,6 +238,10 @@ type FormContextType = {
     gridConfig?: GridConfig,
     allowEditing?: boolean,
     canPrivateUserViewResponses?: string,
+  ) => Promise<void>;
+  saveReportType2Config: (
+    formId: string,
+    config: CollectiveReportType2Config,
   ) => Promise<void>;
   deleteForm: (id: string) => Promise<void>;
   getForm: (id: string) => Form | undefined;
@@ -405,6 +410,37 @@ export function FormProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error updating form:", error);
     }
+  };
+
+  const saveReportType2Config = async (
+    formId: string,
+    config: CollectiveReportType2Config,
+  ) => {
+    if (!user?.id) throw new Error("You must be signed in to save a report template");
+    const currentForm = forms.find((form) => form.id === formId);
+    const existingTableConfig = currentForm?.tableConfig;
+    const tableConfig = {
+      ...(existingTableConfig && !Array.isArray(existingTableConfig) ? existingTableConfig : {}),
+      reportType2Config: config,
+    };
+
+    const response = await fetch(`/api/forms/${formId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": user.id,
+      },
+      body: JSON.stringify({ tableConfig }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to save the Type 2 report template");
+    }
+
+    const updatedForm = await response.json();
+    setForms((currentForms) =>
+      currentForms.map((form) => (form.id === formId ? updatedForm : form)),
+    );
   };
 
   const deleteForm = async (id: string) => {
@@ -707,6 +743,7 @@ export function FormProvider({ children }: { children: ReactNode }) {
         responses,
         addForm,
         updateForm,
+        saveReportType2Config,
         deleteForm,
         getForm,
         submitResponse,
@@ -901,6 +938,10 @@ export interface CollectiveReportType2Config {
   footerText: string;
   selectedFields: string[];
   fieldOrder: string[];
+  tableColumns: Array<{
+    field: string;
+    header: string;
+  }>;
   layout: "separate_pages" | "continuous";
   headerColor: string;
   headerTextColor: string;
@@ -1457,18 +1498,30 @@ export async function generateResponsesPdfCustom(
   doc.save(`${form.title}-all-responses-custom-${new Date().toISOString().split("T")[0]}.pdf`);
 }
 
-const getType2Fields = (config: CollectiveReportType2Config) =>
-  config.fieldOrder.filter((field) => config.selectedFields.includes(field));
-
 const getType2Title = (form: any, config: CollectiveReportType2Config) =>
   config.title.trim() || `${form.title} Report`;
+
+const getType2Columns = (config: CollectiveReportType2Config) => {
+  if (config.tableColumns?.length) return config.tableColumns;
+  return config.fieldOrder
+    .filter((field) => config.selectedFields.includes(field))
+    .map((field) => ({ field, header: field }));
+};
+
+const getType2CellValue = (response: any, field: string, responseIndex: number) => {
+  if (field === "__responseNumber") return String(responseIndex + 1);
+  if (field === "__submittedAt") {
+    return response.submittedAt ? new Date(response.submittedAt).toLocaleString() : "";
+  }
+  return formatReportValue(response.data?.[field]);
+};
 
 export async function generateResponsesDocxType2(
   form: any,
   responses: any[],
   config: CollectiveReportType2Config,
 ) {
-  const fields = getType2Fields(config);
+  const columns = getType2Columns(config);
   const body: any[] = [
     new Paragraph({
       text: getType2Title(form, config),
@@ -1485,57 +1538,47 @@ export async function generateResponsesDocxType2(
     }));
   }
 
-  responses.forEach((response, responseIndex) => {
-    const responseRows = [
+  const buildTable = (response: any, responseIndex: number) => new Table({
+    rows: [
       new TableRow({
-        children: [
-          new TableCell({
-            children: [new Paragraph({ children: [new TextRun({ text: "Submitted At", bold: true })] })],
-            shading: { fill: config.headerColor.replace("#", "") },
-          }),
+        children: columns.map((column) =>
           new TableCell({
             children: [new Paragraph({
-              children: [new TextRun({ text: response.submittedAt ? new Date(response.submittedAt).toLocaleString() : "" })],
+              children: [new TextRun({
+                text: column.header || column.field,
+                bold: true,
+                color: config.headerTextColor.replace("#", ""),
+                size: config.fontSize * 2,
+              })],
+            })],
+            shading: { fill: config.headerColor.replace("#", "") },
+          }),
+        ),
+      }),
+      new TableRow({
+        children: columns.map((column) =>
+          new TableCell({
+            children: [new Paragraph({
+              children: [new TextRun({
+                text: getType2CellValue(response, column.field, responseIndex),
+                size: config.fontSize * 2,
+              })],
             })],
           }),
-        ],
+        ),
       }),
-      ...fields.map((field) =>
-        new TableRow({
-          children: [
-            new TableCell({
-              children: [new Paragraph({
-                children: [new TextRun({
-                  text: field,
-                  bold: true,
-                  color: config.accentColor.replace("#", ""),
-                })],
-              })],
-              shading: { fill: config.headerColor.replace("#", "") },
-            }),
-            new TableCell({
-              children: [new Paragraph({
-                children: [new TextRun({
-                  text: formatReportValue(response.data?.[field]),
-                  size: config.fontSize * 2,
-                })],
-              })],
-            }),
-          ],
-        }),
-      ),
-    ];
+    ],
+    width: { size: 100, type: WidthType.PERCENTAGE },
+  });
 
+  responses.forEach((response, responseIndex) => {
     body.push(
       new Paragraph({
         text: `Response ${responseIndex + 1}`,
         heading: "Heading2",
         spacing: { before: responseIndex === 0 ? 200 : 400 },
       }),
-      new Table({
-        rows: responseRows,
-        width: { size: 100, type: WidthType.PERCENTAGE },
-      }),
+      buildTable(response, responseIndex),
     );
 
     if (config.layout === "separate_pages" && responseIndex < responses.length - 1) {
@@ -1571,24 +1614,15 @@ export async function generateResponsesPdfType2(
   const pageHeight = doc.internal.pageSize.getHeight();
   const left = 20;
   const contentWidth = pageWidth - 40;
-  const valueLeft = left + contentWidth * 0.38;
   let y = 20;
-  const fields = getType2Fields(config);
+  const columns = getType2Columns(config);
+  const columnWidth = contentWidth / Math.max(columns.length, 1);
 
   const ensureSpace = (height: number) => {
     if (y + height > pageHeight - 22) {
       doc.addPage();
       y = 20;
     }
-  };
-
-  const drawWrapped = (text: string, x: number, width: number, style = "normal") => {
-    doc.setFont("helvetica", style);
-    doc.setFontSize(config.fontSize);
-    const lines = doc.splitTextToSize(text, width);
-    ensureSpace(lines.length * 5 + 5);
-    doc.text(lines, x, y);
-    y += lines.length * 5 + 5;
   };
 
   doc.setFont("helvetica", "bold");
@@ -1610,44 +1644,42 @@ export async function generateResponsesPdfType2(
       y = 20;
     }
 
-    ensureSpace(18);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(config.accentColor);
-    doc.text(`Response ${responseIndex + 1}`, left, y);
-    y += 8;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(config.fontSize);
-    doc.setTextColor("#475569");
-    doc.text(
-      `Submitted: ${response.submittedAt ? new Date(response.submittedAt).toLocaleString() : ""}`,
-      left,
-      y,
+    const headerLines = columns.map((column) =>
+      doc.splitTextToSize(column.header || column.field, Math.max(10, columnWidth - 4)),
     );
-    y += 8;
+    const valueLines = columns.map((column) =>
+      doc.splitTextToSize(
+        getType2CellValue(response, column.field, responseIndex),
+        Math.max(10, columnWidth - 4),
+      ),
+    );
+    const headerHeight = Math.max(10, ...headerLines.map((lines) => lines.length * 5 + 5));
+    const rowHeight = Math.max(10, ...valueLines.map((lines) => lines.length * 5 + 5));
+    ensureSpace(headerHeight + rowHeight + 6);
 
-    const rows = fields.map((field) => ({
-      field,
-      value: formatReportValue(response.data?.[field]),
-    }));
-
-    rows.forEach(({ field, value }) => {
-      const valueLines = doc.splitTextToSize(value, pageWidth - valueLeft - 22);
-      const rowHeight = Math.max(9, valueLines.length * 5 + 4);
-      ensureSpace(rowHeight);
-      doc.setFillColor(config.headerColor);
-      doc.rect(left, y - 5, contentWidth, rowHeight, "F");
-      doc.setDrawColor(210, 214, 220);
-      doc.rect(left, y - 5, contentWidth, rowHeight, "D");
+    doc.setFillColor(config.headerColor);
+    doc.rect(left, y, contentWidth, headerHeight, "F");
+    doc.setDrawColor(190, 195, 205);
+    doc.rect(left, y, contentWidth, headerHeight, "D");
+    columns.forEach((column, columnIndex) => {
+      const x = left + columnIndex * columnWidth;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(config.fontSize);
-      doc.setTextColor(config.accentColor);
-      doc.text(field, left + 3, y + 1);
-      doc.setFont("helvetica", "normal");
       doc.setTextColor(config.headerTextColor);
-      doc.text(valueLines, valueLeft, y + 1);
-      y += rowHeight;
+      doc.text(headerLines[columnIndex], x + 2, y + 6);
+      doc.rect(x, y, columnWidth, headerHeight, "D");
     });
+    y += headerHeight;
+
+    columns.forEach((column, columnIndex) => {
+      const x = left + columnIndex * columnWidth;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(config.fontSize);
+      doc.setTextColor("#1e293b");
+      doc.text(valueLines[columnIndex], x + 2, y + 6);
+      doc.rect(x, y, columnWidth, rowHeight, "D");
+    });
+    y += rowHeight;
 
     if (config.layout === "continuous") y += 8;
   });

@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Share2, Eye, ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronLeft, Edit, Trash2, Save, X, BarChart3, Download, Lock, Share2, Eye, ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -38,7 +37,13 @@ export default function ResponsesView() {
   const [match, params] = useRoute("/forms/:id/responses");
   const { toast } = useToast();
   const { user, isSuspended } = useAuth();
-  const { getForm, updateResponse, deleteResponse, resolveLookup } = useForms();
+  const {
+    getForm,
+    updateResponse,
+    deleteResponse,
+    resolveLookup,
+    saveReportType2Config,
+  } = useForms();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Record<string, any>>({});
   const [responses, setResponses] = useState<any[]>([]);
@@ -53,6 +58,11 @@ export default function ResponsesView() {
   const availableFields = Array.from(
     new Set(responses.flatMap((response) => Object.keys(response.data || {}))),
   );
+  const type2FieldOptions = [
+    { value: "__responseNumber", label: "Response number" },
+    { value: "__submittedAt", label: "Submitted date/time" },
+    ...availableFields.map((field) => ({ value: field, label: field })),
+  ];
 
   const loadResponses = async () => {
     if (!formId) return;
@@ -220,18 +230,29 @@ export default function ResponsesView() {
     }
 
     const fields = availableFields;
+    const defaultColumns = [
+      { field: "__responseNumber", header: "Response #" },
+      { field: "__submittedAt", header: "Submitted At" },
+      ...fields.map((field) => ({ field, header: field })),
+    ];
+    const savedConfig = form.tableConfig?.reportType2Config;
     setType2Format(format);
     setType2Config({
-      title: `${form.title} Report`,
-      headerText: "",
-      footerText: "",
-      selectedFields: fields,
-      fieldOrder: fields,
-      layout: "separate_pages",
-      headerColor: "#f1f5f9",
-      headerTextColor: "#334155",
-      accentColor: "#4f46e5",
-      fontSize: 10,
+      ...(savedConfig || {
+        title: `${form.title} Report`,
+        headerText: "",
+        footerText: "",
+        selectedFields: fields,
+        fieldOrder: fields,
+        layout: "continuous",
+        headerColor: "#f1f5f9",
+        headerTextColor: "#334155",
+        accentColor: "#4f46e5",
+        fontSize: 10,
+      }),
+      tableColumns: savedConfig?.tableColumns?.length
+        ? savedConfig.tableColumns
+        : defaultColumns,
     });
     setType2Open(true);
   };
@@ -240,30 +261,69 @@ export default function ResponsesView() {
     setType2Config((current) => current ? { ...current, ...updates } : current);
   };
 
-  const toggleType2Field = (field: string) => {
+  const updateType2Column = (index: number, updates: Partial<{ field: string; header: string }>) => {
     setType2Config((current) => {
       if (!current) return current;
-      const selectedFields = current.selectedFields.includes(field)
-        ? current.selectedFields.filter((item) => item !== field)
-        : [...current.selectedFields, field];
-      return { ...current, selectedFields };
+      const tableColumns = current.tableColumns.map((column, columnIndex) =>
+        columnIndex === index ? { ...column, ...updates } : column,
+      );
+      return { ...current, tableColumns };
     });
   };
 
-  const moveType2Field = (index: number, direction: "up" | "down") => {
+  const addType2Column = () => {
+    setType2Config((current) => current ? {
+      ...current,
+      tableColumns: [
+        ...current.tableColumns,
+        { field: availableFields[0] || "__responseNumber", header: availableFields[0] || "Response #" },
+      ],
+    } : current);
+  };
+
+  const removeType2Column = (index: number) => {
+    setType2Config((current) => current ? {
+      ...current,
+      tableColumns: current.tableColumns.filter((_, columnIndex) => columnIndex !== index),
+    } : current);
+  };
+
+  const moveType2Column = (index: number, direction: "up" | "down") => {
     setType2Config((current) => {
       if (!current) return current;
       const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= current.fieldOrder.length) return current;
-      const fieldOrder = [...current.fieldOrder];
-      [fieldOrder[index], fieldOrder[targetIndex]] = [fieldOrder[targetIndex], fieldOrder[index]];
-      return { ...current, fieldOrder };
+      if (targetIndex < 0 || targetIndex >= current.tableColumns.length) return current;
+      const tableColumns = [...current.tableColumns];
+      [tableColumns[index], tableColumns[targetIndex]] = [tableColumns[targetIndex], tableColumns[index]];
+      return { ...current, tableColumns };
     });
+  };
+
+  const saveType2Template = async () => {
+    if (!type2Config) return false;
+    try {
+      await saveReportType2Config(form.id, type2Config);
+      toast({
+        title: "Template Saved",
+        description: "Your Type 2 table design will be reused next time.",
+      });
+      return true;
+    } catch (error) {
+      console.error("Error saving Type 2 template:", error);
+      toast({
+        title: "Template Save Failed",
+        description: "The Type 2 report template could not be saved.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   const generateType2Report = async () => {
     if (!type2Config || !type2Format) return;
     try {
+      const saved = await saveType2Template();
+      if (!saved) return;
       if (type2Format === "docx") {
         await generateResponsesDocxType2(form, responses, type2Config);
       } else {
@@ -272,7 +332,7 @@ export default function ResponsesView() {
       setType2Open(false);
       toast({
         title: "Type 2 Report Generated",
-        description: `The customized collective ${type2Format === "docx" ? "Word" : "PDF"} report is ready.`,
+        description: `The customized collective ${type2Format === "docx" ? "Word" : "PDF"} report is ready and the template was saved.`,
       });
     } catch (error) {
       console.error("Error generating Type 2 report:", error);
@@ -484,26 +544,40 @@ export default function ResponsesView() {
 
                 <div className="space-y-3">
                   <div>
-                    <h3 className="text-sm font-semibold">Response fields</h3>
-                    <p className="text-xs text-slate-500">Select fields and use the arrows to arrange their order.</p>
+                    <h3 className="text-sm font-semibold">Response table columns</h3>
+                    <p className="text-xs text-slate-500">
+                      Each selected column becomes a table column. Each response becomes one table row.
+                    </p>
                   </div>
                   <div className="rounded-md border divide-y">
-                    {type2Config.fieldOrder.map((field, index) => (
-                      <div key={field} className="flex items-center gap-3 p-2">
-                        <Checkbox
-                          checked={type2Config.selectedFields.includes(field)}
-                          onCheckedChange={() => toggleType2Field(field)}
+                    {type2Config.tableColumns.map((column, index) => (
+                      <div key={`${column.field}-${index}`} className="flex flex-wrap items-center gap-2 p-2">
+                        <select
+                          value={column.field}
+                          onChange={(event) => updateType2Column(index, {
+                            field: event.target.value,
+                            header: column.header || type2FieldOptions.find((option) => option.value === event.target.value)?.label || event.target.value,
+                          })}
+                          className="h-9 min-w-44 flex-1 rounded-md border border-input bg-background px-2 text-sm"
+                        >
+                          {type2FieldOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                        <Input
+                          value={column.header}
+                          onChange={(event) => updateType2Column(index, { header: event.target.value })}
+                          placeholder="Column header"
+                          className="min-w-44 flex-1"
                         />
-                        <span className={`flex-1 text-sm ${type2Config.selectedFields.includes(field) ? "text-slate-900" : "text-slate-400"}`}>
-                          {field}
-                        </span>
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7"
+                          className="h-8 w-8"
                           disabled={index === 0}
-                          onClick={() => moveType2Field(index, "up")}
+                          onClick={() => moveType2Column(index, "up")}
+                          title="Move column left"
                         >
                           <ChevronUp className="w-4 h-4" />
                         </Button>
@@ -511,23 +585,43 @@ export default function ResponsesView() {
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7"
-                          disabled={index === type2Config.fieldOrder.length - 1}
-                          onClick={() => moveType2Field(index, "down")}
+                          className="h-8 w-8"
+                          disabled={index === type2Config.tableColumns.length - 1}
+                          onClick={() => moveType2Column(index, "down")}
+                          title="Move column right"
                         >
                           <ChevronDown className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-red-500 hover:text-red-600"
+                          onClick={() => removeType2Column(index)}
+                          title="Remove column"
+                        >
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
                     ))}
                   </div>
+                  <Button type="button" variant="outline" size="sm" onClick={addType2Column}>
+                    <Plus className="w-4 h-4 mr-1" /> Add column
+                  </Button>
+                  <p className="text-xs text-slate-500">
+                    Current table size: {type2Config.tableColumns.length} column{type2Config.tableColumns.length === 1 ? "" : "s"} × {responses.length} response row{responses.length === 1 ? "" : "s"}.
+                  </p>
                 </div>
               </div>
             )}
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setType2Open(false)}>Cancel</Button>
-              <Button onClick={generateType2Report} disabled={!type2Config?.selectedFields.length}>
-                Generate {type2Format === "docx" ? "Word" : "PDF"} Type 2
+              <Button variant="outline" onClick={saveType2Template} disabled={!type2Config?.tableColumns.length}>
+                Save Template
+              </Button>
+              <Button onClick={generateType2Report} disabled={!type2Config?.tableColumns.length}>
+                Generate & Save {type2Format === "docx" ? "Word" : "PDF"} Type 2
               </Button>
             </DialogFooter>
           </DialogContent>
